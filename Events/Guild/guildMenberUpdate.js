@@ -35,10 +35,10 @@ module.exports = {
 
             if (removedRoles.size > 0) {
                 for (const role of removedRoles.values()) {
-                    const roleData = await RoleTab.findOne({ guildId, roleId: role.id });
+                    const roleData = await tabsSchema.findOne({ guildId, roleId: role.id });
                     if (roleData) {
                         // Verificar si el usuario tiene otros roles con etiquetas activas
-                        const activeRole = await RoleTab.findOne({
+                        const activeRole = await tabsSchema.findOne({
                             guildId,
                             roleId: { $in: newMember.roles.cache.map((r) => r.id) },
                         });
@@ -47,6 +47,12 @@ module.exports = {
                             // No tiene más roles con etiquetas
                             await newMember.setNickname(null); // Resetea el nickname
                             console.log(`Nickname reseteado para: ${newMember.user.username}`);
+                        } else {
+                            const tab = activeRole.tabStaff;
+                            const username = newMember.user.username;
+                            const newNickname = `『${tab}』${username}`;
+                            await newMember.setNickname(newNickname);
+                            console.log(`Nickname actualizado a: ${newNickname}`);
                         }
                         break; // Solo manejamos la primera etiqueta encontrada
                     }
