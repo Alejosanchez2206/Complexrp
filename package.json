@@ -1,0 +1,20 @@
+{
+  "name": "discord",
+  "version": "1.0.0",
+  "description": "Sistema de bot para discord ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Alejo sanchez",
+  "license": "ISC",
+  "dependencies": {
+    "ascii-table": "^0.0.9",
+    "axios": "^1.7.7",
+    "colors": "^1.4.0",
+    "discord.js": "^14.13.0",
+    "fs": "^0.0.1-security",
+    "mongoose": "^7.6.3",
+    "ms": "^2.1.3"
+  }
+}
