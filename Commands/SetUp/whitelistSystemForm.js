@@ -12,30 +12,30 @@ const {
 
 const permisosSchema = require('../../Models/addPermisos');
 
-const whitelistSchema = require('../../Models/verifySchema');
+const whitelistSchema = require('../../Models/whitelistSystemSchema');
 
 const buttons = new ActionRowBuilder()
     .addComponents(
         new ButtonBuilder()
-            .setCustomId('WhitelistSystem')
+            .setCustomId('WhitelistSystemSubmit')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('✅')
             .setLabel('Activar'),
 
         new ButtonBuilder()
-            .setCustomId('WhitelistSystemD')
+            .setCustomId('WhitelistSystemDeclime')
             .setStyle(ButtonStyle.Danger)
             .setEmoji('❌')
             .setLabel('Desactivar'),
     );
 
+
 const urlImgRegex = /(https?:\/\/.*\.(?:png|jpg|gif|webp))/i;
 const colorRegex = /^#([0-9a-f]{3}){1,2}$/i;
 
-
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('verify-system')
+        .setName('whitelist-system')
         .setDescription('Muestra los anuncios')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addChannelOption(option =>
@@ -65,7 +65,12 @@ module.exports = {
             option.setName('role')
                 .setDescription('Role de la lista blanca')
                 .setRequired(false)
-        ),
+        )
+        .addChannelOption(option =>
+            option.setName('channelresult')
+                .setDescription('Canal donde se envia el resultado')
+        )
+    ,
 
     /**
      * @param {ChatInputCommandInteraction} interaction
@@ -80,9 +85,9 @@ module.exports = {
             const button = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setCustomId('verifySystem')
-                        .setStyle(ButtonStyle.Primary)
-                        .setEmoji('✅')
+                        .setCustomId('whitelistSystem')
+                        .setStyle(ButtonStyle.Success)
+                        .setLabel('Realizar Whitelist'),
 
                 )
 
@@ -103,7 +108,7 @@ module.exports = {
             const color = colorRegex.test(interaction.options.getString('color')) ? interaction.options.getString('color') : '#000000';
             const channel = interaction.options.getChannel('channel');
             const role = interaction.options.getRole('role');
-
+            const channelresult = interaction.options.getChannel('channelresult')
 
             const data = await whitelistSchema.findOne({ guildId: interaction.guild.id });
 
@@ -129,8 +134,8 @@ module.exports = {
                 componentType: ComponentType.Button
             });
 
-            if (confirmation.customId === 'WhitelistSystem') {
-                const message = await interaction.guild.channels.cache.get(channel.id).send(
+            if (confirmation.customId === 'WhitelistSystemSubmit') {
+                await interaction.guild.channels.cache.get(channel.id).send(
                     {
                         embeds: [embed],
                         components: [button]
@@ -140,11 +145,12 @@ module.exports = {
                 await whitelistSchema.create({
                     guildId: interaction.guild.id,
                     channelId: channel.id,
-                    messageId: message.id,
-                    roleId: role.id
+                    roleId: role.id,
+                    channelResult: channelresult.id
                 });
                 await systemMessage?.edit({ content: 'Sistema enviado con exito', components: [], ephemeral: true });
-            } else if (confirmation.customId === 'WhitelistSystemD') {
+
+            } else if (confirmation.customId === 'WhitelistSystemDeclime') {
                 await systemMessage?.edit({ content: 'Sistema desactivado con exito', components: [], ephemeral: true });
             }
 

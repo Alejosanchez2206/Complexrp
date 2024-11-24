@@ -62,8 +62,5 @@ module.exports = {
             console.error(`Error en el sistema de anuncios: ${error.message}`);
             interaction.reply({ content: 'Error en el sistema de anuncios', ephemeral: true });
         }
-
-
-
     }
 }

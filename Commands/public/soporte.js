@@ -1,12 +1,7 @@
 const {
-    StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder,
-    ActionRowBuilder,
     SlashCommandBuilder,
     Client,
-    ChatInputCommandInteraction,
-    ComponentType,
-    EmbedBuilder
+    ChatInputCommandInteraction
 } = require('discord.js');
 
 const permisosSchema = require('../../Models/addPermisos');

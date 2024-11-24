@@ -20,14 +20,13 @@ module.exports = {
             const guildId = newMember.guild.id;
 
             if (addedRoles.size > 0) {
-                for (const role of addedRoles.values()) {
+                 for (const role of addedRoles.values()) {
                     const roleData = await tabsSchema.findOne({ guildId, roleId: role.id });
                     if (roleData) {
                         const tab = roleData.tabStaff;
-                        const username = newMember.user.username;
+                       const username = newMember.user.username;
                         const newNickname = `『${tab}』${username}`;
                         await newMember.setNickname(newNickname);
-                        console.log(`Nickname actualizado a: ${newNickname}`);
                         break; // Solo aplicamos la primera etiqueta encontrada
                     }
                 }
@@ -46,13 +45,11 @@ module.exports = {
                         if (!activeRole) {
                             // No tiene más roles con etiquetas
                             await newMember.setNickname(null); // Resetea el nickname
-                            console.log(`Nickname reseteado para: ${newMember.user.username}`);
                         } else {
                             const tab = activeRole.tabStaff;
                             const username = newMember.user.username;
                             const newNickname = `『${tab}』${username}`;
                             await newMember.setNickname(newNickname);
-                            console.log(`Nickname actualizado a: ${newNickname}`);
                         }
                         break; // Solo manejamos la primera etiqueta encontrada
                     }

@@ -1,11 +1,11 @@
 const {
     SlashCommandBuilder,
-    Client,
-    CahatInputCommandInteraction,
-    PermissionFlagsBits
+    Client
 } = require('discord.js');
+
 const config = require('../../config.json');
 const tabsSchema = require('../../Models/tabsStaffSchema');
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('tab-staff')
