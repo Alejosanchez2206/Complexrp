@@ -4,7 +4,8 @@ const verifySchema = new Schema({
     guildId : String,
     channelId : String,
     roleId : String,
-    messageId : String
+    messageId : String,
+    channelResultId : String
 }, {
     versionKey: false
 })

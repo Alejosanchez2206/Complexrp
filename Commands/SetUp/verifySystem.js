@@ -65,6 +65,11 @@ module.exports = {
             option.setName('role')
                 .setDescription('Role de la lista blanca')
                 .setRequired(false)
+        )
+        .addChannelOption(option =>
+            option.setName('channel-result')
+                .setDescription('Canal donde se enviaran los resultados')
+                .setRequired(false)
         ),
 
     /**
@@ -103,7 +108,7 @@ module.exports = {
             const color = colorRegex.test(interaction.options.getString('color')) ? interaction.options.getString('color') : '#000000';
             const channel = interaction.options.getChannel('channel');
             const role = interaction.options.getRole('role');
-
+            const channelResult = interaction.options.getChannel('channel-result');
 
             const data = await whitelistSchema.findOne({ guildId: interaction.guild.id });
 
@@ -141,7 +146,8 @@ module.exports = {
                     guildId: interaction.guild.id,
                     channelId: channel.id,
                     messageId: message.id,
-                    roleId: role.id
+                    roleId: role.id,
+                    channelResultId: channelResult.id
                 });
                 await systemMessage?.edit({ content: 'Sistema enviado con exito', components: [], ephemeral: true });
             } else if (confirmation.customId === 'WhitelistSystemD') {
