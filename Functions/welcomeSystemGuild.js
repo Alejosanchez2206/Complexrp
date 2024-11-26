@@ -27,7 +27,7 @@ module.exports = {
 
         // Creamos el embed de bienvenida
         const embed = new EmbedBuilder()
-            .setAuthor({ name: `Bienvenid@ <@${member.user.id}>`, iconURL: client.user ? client.user.displayAvatarURL() : null })
+            .setAuthor({ name: `Bienvenid@ ${member.user.tag}`, iconURL: member.user.displayAvatarURL() })
             .setDescription(data.WelcomeMessage)
             .setColor(data.WelcomeColor || '#000000')
             .setImage(data.WelcomeImage || member.guild.iconURL())
