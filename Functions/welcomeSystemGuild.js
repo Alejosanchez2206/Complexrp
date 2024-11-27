@@ -27,9 +27,9 @@ module.exports = {
 
         // Creamos el embed de bienvenida
         const embed = new EmbedBuilder()
-            .setAuthor({ name: `Bienvenid@ ${member.user.tag}`, iconURL: member.user.displayAvatarURL() })
+            .setAuthor({ name: `Bienvenid@ <@${member.user.id}>`, iconURL: member.user.displayAvatarURL() })
             .setDescription(data.WelcomeMessage)
-            .setColor(data.WelcomeColor || '#000000')
+            .setColor(data.WelcomeColor || '#62049D')
             .setImage(data.WelcomeImage || member.guild.iconURL())
             .setFooter({ text: 'Disfruta tu estancia', iconURL: client.user ? client.user.displayAvatarURL() : null })
             .setTimestamp();

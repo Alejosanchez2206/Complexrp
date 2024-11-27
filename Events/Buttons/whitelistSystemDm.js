@@ -5,19 +5,35 @@ const {
     TextInputStyle,
     ButtonBuilder,
     EmbedBuilder,
-    ButtonStyle
+    ButtonStyle,
+    StringSelectMenuBuilder,
 } = require('discord.js');
 
 const questionsSchema = require('../../Models/questions');
 const whitelistSchema = require('../../Models/whitelistSystemSchema');
 const state = {};
 
+const button = new ActionRowBuilder()
+    .addComponents(
+        new ButtonBuilder()
+            .setCustomId('WhitelistSystemAccept')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('✅')
+            .setLabel('Aceptar'),
+        new ButtonBuilder()
+            .setCustomId('WhitelistSystemDecline')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('❌')
+            .setLabel('Denegar')
+    )
+
 module.exports = {
     name: 'interactionCreate',
 
     async execute(interaction) {
         try {
-            if (!interaction.isButton() && !interaction.isModalSubmit()) return;
+            if (!interaction.isButton() && !interaction.isModalSubmit() && !interaction.isSelectMenu()) return;
+
             async function showModalForm(interaction, question, questionIndex) {
                 const modal = new ModalBuilder()
                     .setCustomId(`responseModal${questionIndex}`)
@@ -39,40 +55,78 @@ module.exports = {
                 const embed = new EmbedBuilder()
                     .setColor('#FFD700')
                     .setTitle('Responde la siguiente pregunta')
-                    .setDescription(question)
+                    .setDescription(question.question)
                     .setFooter({ text: `Pregunta ${currentQuestion + 1} de ${totalQuestions}` });
 
-                const button = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId(`openModal${currentQuestion}`)
-                        .setStyle(ButtonStyle.Primary)
-                        .setLabel('Responder')
-                );
+                let components = [];
+
+                if (question.type === 'select') {
+                    const selectMenu = new StringSelectMenuBuilder()
+                        .setCustomId(`selectMenu${currentQuestion}`)
+                        .setPlaceholder('Selecciona una opción')
+                        .addOptions(
+                            question.options.map((option, index) => ({
+                                label: option,
+                                value: option,
+                            }))
+                        );
+
+                    components = [new ActionRowBuilder().addComponents(selectMenu)];
+                } else {
+                    const button = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`openModal${currentQuestion}`)
+                            .setStyle(ButtonStyle.Primary)
+                            .setLabel('Responder')
+                    );
+                    components = [button];
+                }
 
                 if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ embeds: [embed], components: [button], ephemeral: true });
+                    await interaction.reply({ embeds: [embed], components: components, ephemeral: true });
                 } else {
-                    await interaction.followUp({ embeds: [embed], components: [button], ephemeral: true });
+                    await interaction.followUp({ embeds: [embed], components: components, ephemeral: true });
                 }
             }
 
             if (interaction.customId === 'whitelistSystem') {
-                const questions = await questionsSchema.aggregate([
+                const guildId = "1037506904437567608"; // ID de tu servidor
+
+                // Obtener 4 preguntas sin opciones
+                const questionsWithoutOptions = await questionsSchema.aggregate([
                     {
                         $match: {
-                            guildId: interaction.guild.id
-                        }
+                            guildId: guildId,
+                            type: 'text'
+                        },
                     },
                     {
                         $sample: {
-                            size: 9
+                            size: 1
                         }
                     }
                 ]);
 
-                questions.push({
-                    question: 'Escribe la historia de tu personaje'
-                });
+                // Obtener 4 preguntas con opciones
+                const questionsWithOptions = await questionsSchema.aggregate([
+                    {
+                        $match: {
+                            guildId: guildId,
+                            type: 'select'
+                        },
+                    },
+                    {
+                        $sample: {
+                            size: 1
+                        }
+                    }
+                ]);
+
+                // Combinar los resultados
+                const questions = [...questionsWithoutOptions, ...questionsWithOptions, {
+                    question: 'Escribe la historia de tu personaje',
+                    type: 'text'
+                }];
 
                 if (questions.length === 0) {
                     return interaction.reply({ content: 'No hay preguntas disponibles', ephemeral: true });
@@ -84,7 +138,7 @@ module.exports = {
                     questions
                 };
 
-                await sendQuestionEmbed(interaction, questions[0].question, 0, questions.length);
+                await sendQuestionEmbed(interaction, questions[0], 0, questions.length);
 
             } else if (interaction.customId.startsWith('openModal')) {
                 const questionIndex = parseInt(interaction.customId.replace('openModal', ''));
@@ -93,9 +147,9 @@ module.exports = {
 
                 await showModalForm(interaction, question.question, questionIndex);
 
-            } else if (interaction.isModalSubmit()) {
-                const questionIndex = parseInt(interaction.customId.replace('responseModal', ''));
-                const response = interaction.fields.getTextInputValue('response');
+            } else if (interaction.isSelectMenu()) {
+                const questionIndex = parseInt(interaction.customId.replace('selectMenu', ''));
+                const response = interaction.values[0];
                 const userId = interaction.user.id;
 
                 if (!state[userId]) {
@@ -108,13 +162,13 @@ module.exports = {
                 const { currentQuestion, questions } = state[userId];
 
                 if (currentQuestion < questions.length) {
-                    await interaction.deferUpdate(); 
-                    await sendQuestionEmbed(interaction, questions[currentQuestion].question, currentQuestion, questions.length);
+                    await interaction.deferUpdate();
+                    await sendQuestionEmbed(interaction, questions[currentQuestion], currentQuestion, questions.length);
                 } else {
                     await interaction.update({ content: 'Gracias por responder todas las preguntas!', embeds: [], components: [], ephemeral: true });
 
                     const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
-                    const channel = interaction.guild.channels.cache.get(responseData.channelId);
+                    const channel = interaction.guild.channels.cache.get(responseData.channelResult);
 
                     const embed = new EmbedBuilder()
                         .setTitle('Formulario de Whitelist')
@@ -130,7 +184,48 @@ module.exports = {
                     }
                     embed.setFooter({ text: 'ID:' + interaction.user.id });
 
-                    await channel.send({ embeds: [embed] });
+                    await channel.send({ embeds: [embed], components: [button] });
+
+                    delete state[userId];
+                }
+            } else if (interaction.isModalSubmit()) {
+                const questionIndex = parseInt(interaction.customId.replace('responseModal', ''));
+                const response = interaction.fields.getTextInputValue('response');
+                const userId = interaction.user.id;
+
+                if (!state[userId]) {
+                    return interaction.reply({ content: 'Hubo un problema con tu sesión. Por favor, intenta de nuevo.', ephemeral: true });
+                }
+
+                state[userId].responses[questionIndex] = response;
+                state[userId].currentQuestion++;
+
+                const { currentQuestion, questions } = state[userId];
+
+                if (currentQuestion < questions.length) {
+                    await interaction.deferUpdate();
+                    await sendQuestionEmbed(interaction, questions[currentQuestion], currentQuestion, questions.length);
+                } else {
+                    await interaction.update({ content: 'Gracias por responder todas las preguntas!', embeds: [], components: [], ephemeral: true });
+
+                    const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
+                    const channel = interaction.guild.channels.cache.get(responseData.channelResult);
+
+                    const embed = new EmbedBuilder()
+                        .setTitle('Formulario de Whitelist')
+                        .setColor('#FFD700')
+                        .setDescription('**Información del formulario:**')
+                        .addFields(
+                            { name: 'Nombre', value: interaction.user.username, inline: true },
+                            { name: 'ID', value: interaction.user.id, inline: true }
+                        );
+
+                    for (let i = 0; i < state[userId].responses.length; i++) {
+                        embed.addFields({ name: `${questions[i].question}`, value: state[userId].responses[i], inline: false });
+                    }
+                    embed.setFooter({ text: 'ID:' + interaction.user.id });
+
+                    await channel.send({ embeds: [embed], components: [button] });
 
                     delete state[userId];
                 }

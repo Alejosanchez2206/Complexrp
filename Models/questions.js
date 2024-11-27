@@ -2,7 +2,9 @@ const { Schema , model } = require('mongoose');
 
 const questionsSchema = new Schema({
     guildId : String,
-    question : String
+    question : String,
+    options : Array,
+    type : String
 }, {
     versionKey: false
 })
