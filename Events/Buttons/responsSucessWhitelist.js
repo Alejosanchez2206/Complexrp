@@ -93,7 +93,9 @@ module.exports = {
 
                     // Actualizar el mensaje original con el nuevo embed
                     await interaction.message.edit({ embeds: [updatedEmbed], components: [] });
-
+                    const role = interaction.guild.roles.cache.get(whitelist.roleId);
+                    const member = interaction.guild.members.cache.get(id);
+                    await member.roles.add(role);
                     const channel = interaction.guild.channels.cache.get(whitelist.channelResult);
                     await channel.send({ content: `<@${id}> Bienvenido a ${interaction.guild.name}, Whitelist aprobada!`, files: [attachment] });
 
