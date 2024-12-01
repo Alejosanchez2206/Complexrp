@@ -90,7 +90,14 @@ module.exports = {
             }
 
             if (interaction.customId === 'whitelistSystem') {
-                const guildId = interaction.guild.id ; // ID de tu servidor
+                const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
+                const rolesArray = rolesUser.split(',');
+
+                const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
+               
+                if (rolesArray.includes(responseData.roleId)) return interaction.reply({ content: '❌ Ya has sido verificado.', ephemeral: true });
+
+                const guildId = interaction.guild.id; // ID de tu servidor
 
                 // Obtener 4 preguntas sin opciones
                 const questionsWithoutOptions = await questionsSchema.aggregate([
@@ -168,7 +175,8 @@ module.exports = {
                     await interaction.update({ content: 'Gracias por responder todas las preguntas!', embeds: [], components: [], ephemeral: true });
 
                     const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
-                    const channel = interaction.guild.channels.cache.get(responseData.channelResult);
+                  
+                    const channel = interaction.guild.channels.cache.get(responseData.channelSend);
 
                     const embed = new EmbedBuilder()
                         .setTitle('Formulario de Whitelist')
@@ -209,7 +217,7 @@ module.exports = {
                     await interaction.update({ content: 'Gracias por responder todas las preguntas!', embeds: [], components: [], ephemeral: true });
 
                     const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
-                    const channel = interaction.guild.channels.cache.get(responseData.channelResult);
+                    const channel = interaction.guild.channels.cache.get(responseData.channelSend);
 
                     const embed = new EmbedBuilder()
                         .setTitle('Formulario de Whitelist')

@@ -1,10 +1,21 @@
 const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
 const whitelistSchema = require('../../Models/whitelistSystemSchema');
+const permisosSchema = require('../../Models/addPermisos');
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
         if (!interaction.isButton()) return;
         if (interaction.customId === 'WhitelistSystemDeclineButton') {
+
+            // Verificar que el usuario tiene el rol adecuado
+            const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
+            const rolesArray = rolesUser.split(',');
+            const validarRol = await permisosSchema.find({ permiso: 'revisar-whitelist', guild: interaction.guild.id, rol: { $in: rolesArray } });
+
+            if (validarRol.length === 0) {
+                return interaction.reply({ content: 'No tienes permisos para responder whitelist, si crees que es un error contacta con los Supervisores', ephemeral: true });
+            }
+
             const embed = interaction.message.embeds[0];
             const footer = embed.footer.text; // El texto del footer, e.g., "ID:672919914985816074"
             const id = footer.match(/\d+/)?.[0]; // Extraer solo los números usando una expresión regular
@@ -22,7 +33,7 @@ module.exports = {
             await interaction.message.edit({ embeds: [updatedEmbed], components: [] });
 
 
-            const channel = interaction.guild.channels.cache.get(whitelist.channelSend);
+            const channel = interaction.guild.channels.cache.get(whitelist.channelResult);
             await channel.send({ content: `<@${id}> Lo sentimos, su solicitud de whitelist ha sido rechazada.` });
         }
     }
