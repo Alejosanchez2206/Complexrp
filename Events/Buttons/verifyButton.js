@@ -95,7 +95,7 @@ module.exports = {
                 ctx.fillText('WHITELIST APROBADA', 500, 380);
 
                 const attachment = new AttachmentBuilder(canvas.toBuffer('image/png'), { name: 'tarjeta.png' });
-                const channel = interaction.guild.channels.cache.get(data.channelId);
+                const channel = interaction.guild.channels.cache.get(data.channelResult);
                 await channel.send({ content: `<@${interaction.user.id}> Bienvenido a ${interaction.guild.name}, te esperamos el día de nuestra apertura`, files: [attachment] });
                 await interaction.followUp({ content: '✅ Verificación exitosa.', ephemeral: true });
             }

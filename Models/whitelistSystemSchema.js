@@ -4,7 +4,8 @@ const whitelistSchema = new Schema({
     guildId : String,
     roleId : String,
     channelId : String,
-    channelResult : String
+    channelResult : String,
+    channelSend : String
 }, {
     versionKey: false
 })

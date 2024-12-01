@@ -21,7 +21,7 @@ const button = new ActionRowBuilder()
             .setEmoji('✅')
             .setLabel('Aceptar'),
         new ButtonBuilder()
-            .setCustomId('WhitelistSystemDecline')
+            .setCustomId('WhitelistSystemDeclineButton')
             .setStyle(ButtonStyle.Danger)
             .setEmoji('❌')
             .setLabel('Denegar')
@@ -32,7 +32,7 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            if (!interaction.isButton() && !interaction.isModalSubmit() && !interaction.isSelectMenu()) return;
+            if (!interaction.isButton() && !interaction.isModalSubmit() && !interaction.isStringSelectMenu()) return;
 
             async function showModalForm(interaction, question, questionIndex) {
                 const modal = new ModalBuilder()
@@ -90,7 +90,7 @@ module.exports = {
             }
 
             if (interaction.customId === 'whitelistSystem') {
-                const guildId = "1037506904437567608"; // ID de tu servidor
+                const guildId = interaction.guild.id ; // ID de tu servidor
 
                 // Obtener 4 preguntas sin opciones
                 const questionsWithoutOptions = await questionsSchema.aggregate([
@@ -102,7 +102,7 @@ module.exports = {
                     },
                     {
                         $sample: {
-                            size: 1
+                            size: 5
                         }
                     }
                 ]);
@@ -117,7 +117,7 @@ module.exports = {
                     },
                     {
                         $sample: {
-                            size: 1
+                            size: 5
                         }
                     }
                 ]);
@@ -147,7 +147,7 @@ module.exports = {
 
                 await showModalForm(interaction, question.question, questionIndex);
 
-            } else if (interaction.isSelectMenu()) {
+            } else if (interaction.isStringSelectMenu()) {
                 const questionIndex = parseInt(interaction.customId.replace('selectMenu', ''));
                 const response = interaction.values[0];
                 const userId = interaction.user.id;

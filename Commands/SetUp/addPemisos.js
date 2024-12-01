@@ -28,7 +28,8 @@ module.exports = {
                     { name: 'subir-foto', value: 'subir-foto' },
                     { name : 'whitelist', value: 'whitelist' },
                     { name : 'annunciar', value: 'annunciar' },
-                    { name : 'seend-img', value: 'seend-img' }
+                    { name : 'seend-img', value: 'seend-img' },
+                    { name : 'revisar-whitelist', value: 'revisar-whitelist' },
                 )
         ),
 

@@ -43,7 +43,7 @@ module.exports = {
                 .setDescription('Canal de anuncios')
                 .setRequired(true)
                 .addChannelTypes(ChannelType.GuildText)
-        )
+        )    
         .addStringOption(option =>
             option.setName('message')
                 .setDescription('Mensaje de anuncios')
@@ -69,6 +69,9 @@ module.exports = {
         .addChannelOption(option =>
             option.setName('channelresult')
                 .setDescription('Canal donde se envia el resultado')
+        ).addChannelOption(option =>
+            option.setName('channellog')
+                .setDescription('Canal donde se envia el log')
         )
     ,
 
@@ -109,6 +112,7 @@ module.exports = {
             const channel = interaction.options.getChannel('channel');
             const role = interaction.options.getRole('role');
             const channelresult = interaction.options.getChannel('channelresult')
+           const channelseend = interaction.options.getChannel('channellog')
 
             const data = await whitelistSchema.findOne({ guildId: interaction.guild.id });
 
@@ -140,13 +144,14 @@ module.exports = {
                         embeds: [embed],
                         components: [button]
                     });
-
+                
 
                 await whitelistSchema.create({
                     guildId: interaction.guild.id,
                     channelId: channel.id,
                     roleId: role.id,
-                    channelResult: channelresult.id
+                    channelResult: channelresult.id,
+                    channelSend: channelseend.id
                 });
                 await systemMessage?.edit({ content: 'Sistema enviado con exito', components: [], ephemeral: true });
 
