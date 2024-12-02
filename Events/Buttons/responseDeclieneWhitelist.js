@@ -34,7 +34,7 @@ module.exports = {
 
 
             const channel = interaction.guild.channels.cache.get(whitelist.channelResult);
-            await channel.send({ content: `<@${id}> Lo sentimos, su solicitud de whitelist ha sido rechazada.` });
+            await channel.send({ content: `❌ <@${id}> Lo sentimos, su solicitud de whitelist ha sido rechazada. ❌ , puedes volver a intentarlo. ⏲️` });
         }
     }
 }
