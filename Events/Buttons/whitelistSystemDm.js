@@ -37,13 +37,15 @@ module.exports = {
             async function showModalForm(interaction, question, questionIndex) {
                 const modal = new ModalBuilder()
                     .setCustomId(`responseModal${questionIndex}`)
-                    .setTitle('Responde a la pregunta');
+                    .setTitle('Responde a la pregunta');                 
 
                 const answerInput = new TextInputBuilder()
                     .setCustomId('response')
                     .setLabel('Escribe tu respuesta')
                     .setStyle(TextInputStyle.Paragraph)
-                    .setRequired(true);
+                    .setRequired(true)
+                    .setMinLength(40)
+                    .setMaxLength(1000);
 
                 const actionRow = new ActionRowBuilder().addComponents(answerInput);
                 modal.addComponents(actionRow);
