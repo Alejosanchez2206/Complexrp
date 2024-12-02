@@ -1,7 +1,8 @@
 const {
     SlashCommandBuilder,
     Client,
-    ChatInputCommandInteraction
+    ChatInputCommandInteraction,
+    EmbedBuilder
 } = require('discord.js');
 
 const permisosSchema = require('../../Models/addPermisos');
