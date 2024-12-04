@@ -11,7 +11,9 @@ const {
 
 const questionsSchema = require('../../Models/questions');
 const whitelistSchema = require('../../Models/whitelistSystemSchema');
-const state = {};
+
+// Mapeo de estado por usuario
+const userStates = new Map();
 
 const button = new ActionRowBuilder()
     .addComponents(
@@ -25,7 +27,7 @@ const button = new ActionRowBuilder()
             .setStyle(ButtonStyle.Danger)
             .setEmoji('❌')
             .setLabel('Denegar')
-    )
+    );
 
 module.exports = {
     name: 'interactionCreate',
@@ -37,15 +39,15 @@ module.exports = {
             async function showModalForm(interaction, question, questionIndex) {
                 const modal = new ModalBuilder()
                     .setCustomId(`responseModal${questionIndex}`)
-                    .setTitle('Responde a la pregunta');                 
+                    .setTitle('Responde a la pregunta');
 
                 const answerInput = new TextInputBuilder()
                     .setCustomId('response')
                     .setLabel('Escribe tu respuesta')
                     .setStyle(TextInputStyle.Paragraph)
                     .setRequired(true)
-                    .setMinLength(40)
-                    .setMaxLength(1000);
+                    .setMinLength(20)
+                    .setMaxLength(900);
 
                 const actionRow = new ActionRowBuilder().addComponents(answerInput);
                 modal.addComponents(actionRow);
@@ -67,7 +69,7 @@ module.exports = {
                         .setCustomId(`selectMenu${currentQuestion}`)
                         .setPlaceholder('Selecciona una opción')
                         .addOptions(
-                            question.options.map((option, index) => ({
+                            question.options.map(option => ({
                                 label: option,
                                 value: option,
                             }))
@@ -92,48 +94,27 @@ module.exports = {
             }
 
             if (interaction.customId === 'whitelistSystem') {
-                const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
-                const rolesArray = rolesUser.split(',');
-
+                const rolesUser = interaction.member.roles.cache.map(role => role.id);
                 const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
-               
-                if (rolesArray.includes(responseData.roleId)) return interaction.reply({ content: '❌ Ya has sido verificado.', ephemeral: true });
 
-                const guildId = interaction.guild.id; // ID de tu servidor
+                if (rolesUser.includes(responseData.roleId)) {
+                    return interaction.reply({ content: '❌ Ya has sido verificado.', ephemeral: true });
+                }
 
-                // Obtener 4 preguntas sin opciones
+                const guildId = interaction.guild.id;
+
                 const questionsWithoutOptions = await questionsSchema.aggregate([
-                    {
-                        $match: {
-                            guildId: guildId,
-                            type: 'text'
-                        },
-                    },
-                    {
-                        $sample: {
-                            size: 5
-                        }
-                    }
+                    { $match: { guildId: guildId, type: 'text' } },
+                    { $sample: { size: 5 } }
                 ]);
 
-                // Obtener 4 preguntas con opciones
                 const questionsWithOptions = await questionsSchema.aggregate([
-                    {
-                        $match: {
-                            guildId: guildId,
-                            type: 'select'
-                        },
-                    },
-                    {
-                        $sample: {
-                            size: 5
-                        }
-                    }
+                    { $match: { guildId: guildId, type: 'select' } },
+                    { $sample: { size: 5 } }
                 ]);
 
-                // Combinar los resultados
                 const questions = [...questionsWithoutOptions, ...questionsWithOptions, {
-                    question: 'Escribe la historia de tu personaje',
+                    question: 'Escribe la historia de tu personaje , (Si superas los 900 caracteres, puedes subir un enlace de google doc con tu historia.)',
                     type: 'text'
                 }];
 
@@ -141,43 +122,43 @@ module.exports = {
                     return interaction.reply({ content: 'No hay preguntas disponibles', ephemeral: true });
                 }
 
-                state[interaction.user.id] = {
+                userStates.set(interaction.user.id, {
                     currentQuestion: 0,
                     responses: [],
                     questions
-                };
+                });
 
                 await sendQuestionEmbed(interaction, questions[0], 0, questions.length);
 
             } else if (interaction.customId.startsWith('openModal')) {
                 const questionIndex = parseInt(interaction.customId.replace('openModal', ''));
-                const { questions } = state[interaction.user.id];
-                const question = questions[questionIndex];
+                const state = userStates.get(interaction.user.id);
 
-                await showModalForm(interaction, question.question, questionIndex);
+                if (!state) {
+                    return interaction.reply({ content: 'Hubo un problema con tu sesión. Por favor, intenta de nuevo.', ephemeral: true });
+                }
+
+                await showModalForm(interaction, state.questions[questionIndex], questionIndex);
 
             } else if (interaction.isStringSelectMenu()) {
                 const questionIndex = parseInt(interaction.customId.replace('selectMenu', ''));
                 const response = interaction.values[0];
-                const userId = interaction.user.id;
+                const state = userStates.get(interaction.user.id);
 
-                if (!state[userId]) {
+                if (!state) {
                     return interaction.reply({ content: 'Hubo un problema con tu sesión. Por favor, intenta de nuevo.', ephemeral: true });
                 }
 
-                state[userId].responses[questionIndex] = response;
-                state[userId].currentQuestion++;
+                state.responses[questionIndex] = response;
+                state.currentQuestion++;
 
-                const { currentQuestion, questions } = state[userId];
-
-                if (currentQuestion < questions.length) {
+                if (state.currentQuestion < state.questions.length) {
                     await interaction.deferUpdate();
-                    await sendQuestionEmbed(interaction, questions[currentQuestion], currentQuestion, questions.length);
+                    await sendQuestionEmbed(interaction, state.questions[state.currentQuestion], state.currentQuestion, state.questions.length);
                 } else {
                     await interaction.update({ content: 'Gracias por responder todas las preguntas!', embeds: [], components: [], ephemeral: true });
 
                     const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
-                  
                     const channel = interaction.guild.channels.cache.get(responseData.channelSend);
 
                     const embed = new EmbedBuilder()
@@ -189,32 +170,30 @@ module.exports = {
                             { name: 'ID', value: interaction.user.id, inline: true }
                         );
 
-                    for (let i = 0; i < state[userId].responses.length; i++) {
-                        embed.addFields({ name: `${questions[i].question}`, value: state[userId].responses[i], inline: false });
+                    for (let i = 0; i < state.responses.length; i++) {
+                        embed.addFields({ name: `${state.questions[i].question}`, value: state.responses[i], inline: false });
                     }
-                    embed.setFooter({ text: 'ID:' + interaction.user.id });
 
+                    embed.setFooter({ text: 'ID:' + interaction.user.id });
                     await channel.send({ embeds: [embed], components: [button] });
 
-                    delete state[userId];
+                    userStates.delete(interaction.user.id);
                 }
             } else if (interaction.isModalSubmit()) {
                 const questionIndex = parseInt(interaction.customId.replace('responseModal', ''));
                 const response = interaction.fields.getTextInputValue('response');
-                const userId = interaction.user.id;
+                const state = userStates.get(interaction.user.id);
 
-                if (!state[userId]) {
+                if (!state) {
                     return interaction.reply({ content: 'Hubo un problema con tu sesión. Por favor, intenta de nuevo.', ephemeral: true });
                 }
 
-                state[userId].responses[questionIndex] = response;
-                state[userId].currentQuestion++;
+                state.responses[questionIndex] = response;
+                state.currentQuestion++;
 
-                const { currentQuestion, questions } = state[userId];
-
-                if (currentQuestion < questions.length) {
+                if (state.currentQuestion < state.questions.length) {
                     await interaction.deferUpdate();
-                    await sendQuestionEmbed(interaction, questions[currentQuestion], currentQuestion, questions.length);
+                    await sendQuestionEmbed(interaction, state.questions[state.currentQuestion], state.currentQuestion, state.questions.length);
                 } else {
                     await interaction.update({ content: 'Gracias por responder todas las preguntas!', embeds: [], components: [], ephemeral: true });
 
@@ -230,17 +209,16 @@ module.exports = {
                             { name: 'ID', value: interaction.user.id, inline: true }
                         );
 
-                    for (let i = 0; i < state[userId].responses.length; i++) {
-                        embed.addFields({ name: `${questions[i].question}`, value: state[userId].responses[i], inline: false });
+                    for (let i = 0; i < state.responses.length; i++) {
+                        embed.addFields({ name: `${state.questions[i].question}`, value: state.responses[i], inline: false });
                     }
-                    embed.setFooter({ text: 'ID:' + interaction.user.id });
 
+                    embed.setFooter({ text: 'ID:' + interaction.user.id });
                     await channel.send({ embeds: [embed], components: [button] });
 
-                    delete state[userId];
+                    userStates.delete(interaction.user.id);
                 }
             }
-
         } catch (error) {
             console.error(error);
             if (!interaction.deferred && !interaction.replied) {

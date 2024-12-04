@@ -30,6 +30,8 @@ module.exports = {
                     { name : 'annunciar', value: 'annunciar' },
                     { name : 'seend-img', value: 'seend-img' },
                     { name : 'revisar-whitelist', value: 'revisar-whitelist' },
+                    { name : 'serverman' , value: 'serverman' },
+                    { name : 'serveronly', value: 'serveronly' },
                 )
         ),
 
