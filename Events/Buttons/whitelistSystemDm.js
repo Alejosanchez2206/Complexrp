@@ -15,26 +15,26 @@ const whitelistSchema = require('../../Models/whitelistSystemSchema');
 // Mapeo de estado por usuario
 const userStates = new Map();
 
-const button = new ActionRowBuilder()
-    .addComponents(
-        new ButtonBuilder()
-            .setCustomId('WhitelistSystemAccept')
-            .setStyle(ButtonStyle.Success)
-            .setEmoji('✅')
-            .setLabel('Aceptar'),
-        new ButtonBuilder()
-            .setCustomId('WhitelistSystemDeclineButton')
-            .setStyle(ButtonStyle.Danger)
-            .setEmoji('❌')
-            .setLabel('Denegar')
-    );
-
 module.exports = {
     name: 'interactionCreate',
 
     async execute(interaction) {
         try {
             if (!interaction.isButton() && !interaction.isModalSubmit() && !interaction.isStringSelectMenu()) return;
+
+            const button = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('WhitelistSystemAccept')
+                        .setStyle(ButtonStyle.Success)
+                        .setEmoji('✅')
+                        .setLabel('Aceptar'),
+                    new ButtonBuilder()
+                        .setCustomId('WhitelistSystemDeclineButton')
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('❌')
+                        .setLabel('Denegar')
+                );
 
             async function showModalForm(interaction, question, questionIndex) {
                 const modal = new ModalBuilder()
