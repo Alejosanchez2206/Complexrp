@@ -30,9 +30,9 @@ module.exports = {
             
             const embed = new EmbedBuilder()
                 .setColor('#FFD700') // Mantener el color dorado para un toque amigable
-                .setTitle('🌐 ¡Conéctate al servidor de FiveM! 🌐') // Título atractivo
+                .setTitle('🌐 ¡Conéctate a Complex Community! 🌐') // Título atractivo
                 .setDescription(
-                    '¡Estamos esperando por ti en nuestro servidor de **FiveM**!\n\n' +
+                    '¡Estamos esperando por ti en **Complex Community**!\n\n' +
                     'Aquí encontrarás aventuras increíbles, un gran equipo y todo lo que necesitas para disfrutar del mejor rol. 🚔🚑\n\n' +
                     '🔗 **Conéctate ahora mismo usando la IP a continuación:**'
                 )
