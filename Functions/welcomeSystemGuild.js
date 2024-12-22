@@ -14,7 +14,6 @@ module.exports = {
 
         // Verificamos que se encuentren los datos y el channelId
         if (!data || !data.channelId) {
-            console.error('No se encontraron datos de bienvenida o channelId está indefinido.');
             return;
         }
 

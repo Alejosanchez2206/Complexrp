@@ -1,7 +1,6 @@
 const {
     SlashCommandBuilder,
     Client,
-    CahatInputCommandInteraction,
     PermissionFlagsBits
 } = require('discord.js');
 const config = require('../../config.json');

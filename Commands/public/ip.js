@@ -1,11 +1,7 @@
 const {
-    StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder,
-    ActionRowBuilder,
     SlashCommandBuilder,
     Client,
     ChatInputCommandInteraction,
-    ComponentType,
     EmbedBuilder
 } = require('discord.js');
 

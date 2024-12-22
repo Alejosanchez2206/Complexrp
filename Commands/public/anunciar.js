@@ -1,7 +1,6 @@
 const {
     SlashCommandBuilder,
     Client,
-    PermissionFlagsBits,
     ChatInputCommandInteraction,
     ChannelType
 } = require('discord.js');

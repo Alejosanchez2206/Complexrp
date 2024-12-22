@@ -36,7 +36,7 @@ module.exports = {
                         .setLabel('Denegar')
                 );
 
-            async function showModalForm(interaction, question, questionIndex) {
+            const showModalForm = async (interaction, questionIndex) => {
                 const modal = new ModalBuilder()
                     .setCustomId(`responseModal${questionIndex}`)
                     .setTitle('Responde a la pregunta');
@@ -46,16 +46,16 @@ module.exports = {
                     .setLabel('Escribe tu respuesta')
                     .setStyle(TextInputStyle.Paragraph)
                     .setRequired(true)
-                    .setMinLength(20)
+                    .setMinLength(2)
                     .setMaxLength(900);
 
                 const actionRow = new ActionRowBuilder().addComponents(answerInput);
                 modal.addComponents(actionRow);
 
                 await interaction.showModal(modal);
-            }
+            };
 
-            async function sendQuestionEmbed(interaction, question, currentQuestion, totalQuestions) {
+            const sendQuestionEmbed = async (interaction, question, currentQuestion, totalQuestions) => {
                 const embed = new EmbedBuilder()
                     .setColor('#FFD700')
                     .setTitle('Responde la siguiente pregunta')
@@ -91,32 +91,37 @@ module.exports = {
                 } else {
                     await interaction.followUp({ embeds: [embed], components: components, ephemeral: true });
                 }
-            }
+            };
 
             if (interaction.customId === 'whitelistSystem') {
                 const rolesUser = interaction.member.roles.cache.map(role => role.id);
                 const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
+
+                if (!responseData || !responseData.channelSend) {
+                    return interaction.reply({ content: 'Configuración de whitelist no válida.', ephemeral: true });
+                }
 
                 if (rolesUser.includes(responseData.roleId)) {
                     return interaction.reply({ content: '❌ Ya has sido verificado.', ephemeral: true });
                 }
 
                 const guildId = interaction.guild.id;
-
                 const questionsWithoutOptions = await questionsSchema.aggregate([
                     { $match: { guildId: guildId, type: 'text' } },
                     { $sample: { size: 5 } }
                 ]);
-
                 const questionsWithOptions = await questionsSchema.aggregate([
                     { $match: { guildId: guildId, type: 'select' } },
                     { $sample: { size: 5 } }
                 ]);
 
-                const questions = [...questionsWithoutOptions, ...questionsWithOptions, {
-                    question: 'Escribe la historia de tu personaje , (Si superas los 900 caracteres, puedes subir un enlace de google doc con tu historia.)',
-                    type: 'text'
-                }];
+                const questionsPerson = [
+                    { question: '¿Qué edad tienes (OC)?', type: 'text' },
+                    { question: '¿Por qué quieres ser parte de la comunidad? ¿Qué servidores has visitado?', type: 'text' },
+                    { question: 'Escribe la historia de tu personaje , (Si superas los 900 caracteres, puedes subir un enlace de google doc con tu historia.)', type: 'text' },
+                ];
+
+                const questions = [...questionsWithoutOptions, ...questionsWithOptions, ...questionsPerson];
 
                 if (questions.length === 0) {
                     return interaction.reply({ content: 'No hay preguntas disponibles', ephemeral: true });
@@ -129,7 +134,6 @@ module.exports = {
                 });
 
                 await sendQuestionEmbed(interaction, questions[0], 0, questions.length);
-
             } else if (interaction.customId.startsWith('openModal')) {
                 const questionIndex = parseInt(interaction.customId.replace('openModal', ''));
                 const state = userStates.get(interaction.user.id);
@@ -138,8 +142,7 @@ module.exports = {
                     return interaction.reply({ content: 'Hubo un problema con tu sesión. Por favor, intenta de nuevo.', ephemeral: true });
                 }
 
-                await showModalForm(interaction, state.questions[questionIndex], questionIndex);
-
+                await showModalForm(interaction, questionIndex);
             } else if (interaction.isStringSelectMenu()) {
                 const questionIndex = parseInt(interaction.customId.replace('selectMenu', ''));
                 const response = interaction.values[0];
@@ -161,6 +164,10 @@ module.exports = {
                     const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
                     const channel = interaction.guild.channels.cache.get(responseData.channelSend);
 
+                    if (!channel) {
+                        return interaction.followUp({ content: 'No se encontró el canal para enviar el formulario.', ephemeral: true });
+                    }
+
                     const embed = new EmbedBuilder()
                         .setTitle('Formulario de Whitelist')
                         .setColor('#FFD700')
@@ -169,9 +176,8 @@ module.exports = {
                             { name: 'Nombre', value: interaction.user.username, inline: true },
                             { name: 'ID', value: interaction.user.id, inline: true }
                         );
-
                     for (let i = 0; i < state.responses.length; i++) {
-                        embed.addFields({ name: `${state.questions[i].question}`, value: state.responses[i], inline: false });
+                        embed.addFields({ name: `${i + 1}) ${state.questions[i].question}`, value: state.responses[i]?.toString() || 'No respondido', inline: false });
                     }
 
                     embed.setFooter({ text: 'ID:' + interaction.user.id });
@@ -200,6 +206,10 @@ module.exports = {
                     const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
                     const channel = interaction.guild.channels.cache.get(responseData.channelSend);
 
+                    if (!channel) {
+                        return interaction.followUp({ content: 'No se encontró el canal para enviar el formulario.', ephemeral: true });
+                    }
+
                     const embed = new EmbedBuilder()
                         .setTitle('Formulario de Whitelist')
                         .setColor('#FFD700')
@@ -210,7 +220,7 @@ module.exports = {
                         );
 
                     for (let i = 0; i < state.responses.length; i++) {
-                        embed.addFields({ name: `${state.questions[i].question}`, value: state.responses[i], inline: false });
+                        embed.addFields({ name: `${i + 1}) ${state.questions[i].question}`, value: state.responses[i]?.toString() || 'No respondido', inline: false });
                     }
 
                     embed.setFooter({ text: 'ID:' + interaction.user.id });
@@ -220,11 +230,11 @@ module.exports = {
                 }
             }
         } catch (error) {
-            console.error(error);
+            console.error('Error en el manejo de interacción:', error);
             if (!interaction.deferred && !interaction.replied) {
-                await interaction.reply({ content: 'Error al enviar el formulario', ephemeral: true });
+                await interaction.reply({ content: 'Se produjo un error inesperado. Por favor, inténtalo de nuevo más tarde.', ephemeral: true });
             } else {
-                await interaction.followUp({ content: 'Error al enviar el formulario', ephemeral: true });
+                await interaction.followUp({ content: 'Se produjo un error inesperado. Por favor, inténtalo de nuevo más tarde.', ephemeral: true });
             }
         }
     }
