@@ -12,8 +12,58 @@ const {
 const questionsSchema = require('../../Models/questions');
 const whitelistSchema = require('../../Models/whitelistSystemSchema');
 
-// Mapeo de estado por usuario
-const userStates = new Map();
+// Sistema de gestión de sesiones mejorado
+class SessionManager {
+    constructor() {
+        this.sessions = new Map();
+        this.SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutos
+    }
+
+    createSession(userId, data) {
+        const session = {
+            ...data,
+            timestamp: Date.now(),
+        };
+        this.sessions.set(userId, session);
+
+        // Configurar limpieza automática
+        setTimeout(() => {
+            this.cleanSession(userId);
+        }, this.SESSION_TIMEOUT);
+    }
+
+    getSession(userId) {
+        const session = this.sessions.get(userId);
+        if (!session) return null;
+
+        // Verificar si la sesión ha expirado
+        if (Date.now() - session.timestamp > this.SESSION_TIMEOUT) {
+            this.cleanSession(userId);
+            return null;
+        }
+
+        return session;
+    }
+
+    updateSession(userId, data) {
+        const currentSession = this.getSession(userId);
+        if (!currentSession) return false;
+
+        const updatedSession = {
+            ...currentSession,
+            ...data,
+            timestamp: Date.now(),
+        };
+        this.sessions.set(userId, updatedSession);
+        return true;
+    }
+
+    cleanSession(userId) {
+        this.sessions.delete(userId);
+    }
+}
+
+const sessionManager = new SessionManager();
 
 module.exports = {
     name: 'interactionCreate',
@@ -127,37 +177,58 @@ module.exports = {
                     return interaction.reply({ content: 'No hay preguntas disponibles', ephemeral: true });
                 }
 
-                userStates.set(interaction.user.id, {
+                // Crear nueva sesión
+                sessionManager.createSession(interaction.user.id, {
                     currentQuestion: 0,
                     responses: [],
                     questions
                 });
 
                 await sendQuestionEmbed(interaction, questions[0], 0, questions.length);
+
             } else if (interaction.customId.startsWith('openModal')) {
                 const questionIndex = parseInt(interaction.customId.replace('openModal', ''));
-                const state = userStates.get(interaction.user.id);
+                const session = sessionManager.getSession(interaction.user.id);
 
-                if (!state) {
-                    return interaction.reply({ content: 'Hubo un problema con tu sesión. Por favor, intenta de nuevo.', ephemeral: true });
+                if (!session) {
+                    return interaction.reply({
+                        content: 'Tu sesión ha expirado o no es válida. Por favor, inicia el proceso nuevamente usando el botón de whitelist.',
+                        ephemeral: true
+                    });
                 }
 
                 await showModalForm(interaction, questionIndex);
+
             } else if (interaction.isStringSelectMenu()) {
                 const questionIndex = parseInt(interaction.customId.replace('selectMenu', ''));
                 const response = interaction.values[0];
-                const state = userStates.get(interaction.user.id);
+                const session = sessionManager.getSession(interaction.user.id);
 
-                if (!state) {
-                    return interaction.reply({ content: 'Hubo un problema con tu sesión. Por favor, intenta de nuevo.', ephemeral: true });
+                if (!session) {
+                    return interaction.reply({
+                        content: 'Tu sesión ha expirado o no es válida. Por favor, inicia el proceso nuevamente usando el botón de whitelist.',
+                        ephemeral: true
+                    });
                 }
 
-                state.responses[questionIndex] = response;
-                state.currentQuestion++;
+                const updatedResponses = [...session.responses];
+                updatedResponses[questionIndex] = response;
 
-                if (state.currentQuestion < state.questions.length) {
+                const success = sessionManager.updateSession(interaction.user.id, {
+                    responses: updatedResponses,
+                    currentQuestion: session.currentQuestion + 1
+                });
+
+                if (!success) {
+                    return interaction.reply({
+                        content: 'Hubo un error al procesar tu respuesta. Por favor, intenta nuevamente.',
+                        ephemeral: true
+                    });
+                }
+
+                if (session.currentQuestion + 1 < session.questions.length) {
                     await interaction.deferUpdate();
-                    await sendQuestionEmbed(interaction, state.questions[state.currentQuestion], state.currentQuestion, state.questions.length);
+                    await sendQuestionEmbed(interaction, session.questions[session.currentQuestion + 1], session.currentQuestion + 1, session.questions.length);
                 } else {
                     await interaction.update({ content: 'Gracias por responder todas las preguntas!', embeds: [], components: [], ephemeral: true });
 
@@ -165,6 +236,7 @@ module.exports = {
                     const channel = interaction.guild.channels.cache.get(responseData.channelSend);
 
                     if (!channel) {
+                        sessionManager.cleanSession(interaction.user.id);
                         return interaction.followUp({ content: 'No se encontró el canal para enviar el formulario.', ephemeral: true });
                     }
 
@@ -176,30 +248,51 @@ module.exports = {
                             { name: 'Nombre', value: interaction.user.username, inline: true },
                             { name: 'ID', value: interaction.user.id, inline: true }
                         );
-                    for (let i = 0; i < state.responses.length; i++) {
-                        embed.addFields({ name: `${i + 1}) ${state.questions[i].question}`, value: state.responses[i]?.toString() || 'No respondido', inline: false });
+
+                    for (let i = 0; i < updatedResponses.length; i++) {
+                        embed.addFields({
+                            name: `${i + 1}) ${session.questions[i].question}`,
+                            value: updatedResponses[i]?.toString() || 'No respondido',
+                            inline: false
+                        });
                     }
 
                     embed.setFooter({ text: 'ID:' + interaction.user.id });
                     await channel.send({ embeds: [embed], components: [button] });
 
-                    userStates.delete(interaction.user.id);
+                    sessionManager.cleanSession(interaction.user.id);
                 }
+
             } else if (interaction.isModalSubmit()) {
                 const questionIndex = parseInt(interaction.customId.replace('responseModal', ''));
                 const response = interaction.fields.getTextInputValue('response');
-                const state = userStates.get(interaction.user.id);
+                const session = sessionManager.getSession(interaction.user.id);
 
-                if (!state) {
-                    return interaction.reply({ content: 'Hubo un problema con tu sesión. Por favor, intenta de nuevo.', ephemeral: true });
+                if (!session) {
+                    return interaction.reply({
+                        content: 'Tu sesión ha expirado o no es válida. Por favor, inicia el proceso nuevamente usando el botón de whitelist.',
+                        ephemeral: true
+                    });
                 }
 
-                state.responses[questionIndex] = response;
-                state.currentQuestion++;
+                const updatedResponses = [...session.responses];
+                updatedResponses[questionIndex] = response;
 
-                if (state.currentQuestion < state.questions.length) {
+                const success = sessionManager.updateSession(interaction.user.id, {
+                    responses: updatedResponses,
+                    currentQuestion: session.currentQuestion + 1
+                });
+
+                if (!success) {
+                    return interaction.reply({
+                        content: 'Hubo un error al procesar tu respuesta. Por favor, intenta nuevamente.',
+                        ephemeral: true
+                    });
+                }
+
+                if (session.currentQuestion + 1 < session.questions.length) {
                     await interaction.deferUpdate();
-                    await sendQuestionEmbed(interaction, state.questions[state.currentQuestion], state.currentQuestion, state.questions.length);
+                    await sendQuestionEmbed(interaction, session.questions[session.currentQuestion + 1], session.currentQuestion + 1, session.questions.length);
                 } else {
                     await interaction.update({ content: 'Gracias por responder todas las preguntas!', embeds: [], components: [], ephemeral: true });
 
@@ -207,6 +300,7 @@ module.exports = {
                     const channel = interaction.guild.channels.cache.get(responseData.channelSend);
 
                     if (!channel) {
+                        sessionManager.cleanSession(interaction.user.id);
                         return interaction.followUp({ content: 'No se encontró el canal para enviar el formulario.', ephemeral: true });
                     }
 
@@ -219,22 +313,38 @@ module.exports = {
                             { name: 'ID', value: interaction.user.id, inline: true }
                         );
 
-                    for (let i = 0; i < state.responses.length; i++) {
-                        embed.addFields({ name: `${i + 1}) ${state.questions[i].question}`, value: state.responses[i]?.toString() || 'No respondido', inline: false });
+                    for (let i = 0; i < updatedResponses.length; i++) {
+                        embed.addFields({
+                            name: `${i + 1}) ${session.questions[i].question}`,
+                            value: updatedResponses[i]?.toString() || 'No respondido',
+                            inline: false
+                        });
                     }
 
                     embed.setFooter({ text: 'ID:' + interaction.user.id });
                     await channel.send({ embeds: [embed], components: [button] });
 
-                    userStates.delete(interaction.user.id);
+                    sessionManager.cleanSession(interaction.user.id);
                 }
             }
         } catch (error) {
             console.error('Error en el manejo de interacción:', error);
+
+            // Limpiar la sesión en caso de error
+            if (interaction.user) {
+                sessionManager.cleanSession(interaction.user.id);
+            }
+
             if (!interaction.deferred && !interaction.replied) {
-                await interaction.reply({ content: 'Se produjo un error inesperado. Por favor, inténtalo de nuevo más tarde.', ephemeral: true });
+                await interaction.reply({
+                    content: 'Se produjo un error inesperado. Por favor, inicia el proceso nuevamente.',
+                    ephemeral: true
+                });
             } else {
-                await interaction.followUp({ content: 'Se produjo un error inesperado. Por favor, inténtalo de nuevo más tarde.', ephemeral: true });
+                await interaction.followUp({
+                    content: 'Se produjo un error inesperado. Por favor, inicia el proceso nuevamente.',
+                    ephemeral: true
+                });
             }
         }
     }
