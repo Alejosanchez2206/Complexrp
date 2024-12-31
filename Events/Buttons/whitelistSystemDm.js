@@ -16,7 +16,7 @@ const whitelistSchema = require('../../Models/whitelistSystemSchema');
 class SessionManager {
     constructor() {
         this.sessions = new Map();
-        this.SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutos
+        this.SESSION_TIMEOUT = 200 * 60 * 1000; // 200 minutos
     }
 
     createSession(userId, data) {
@@ -28,7 +28,9 @@ class SessionManager {
 
         // Configurar limpieza automática
         setTimeout(() => {
-            this.cleanSession(userId);
+            if (this.sessions.has(userId)) {
+                this.cleanSession(userId);
+            }
         }, this.SESSION_TIMEOUT);
     }
 
