@@ -8,15 +8,21 @@ const {
     ButtonStyle,
     StringSelectMenuBuilder,
 } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
 const questionsSchema = require('../../Models/questions');
 const whitelistSchema = require('../../Models/whitelistSystemSchema');
 
-// Sistema de gestión de sesiones mejorado
 class SessionManager {
     constructor() {
         this.sessions = new Map();
-        this.SESSION_TIMEOUT = 200 * 60 * 1000; // 200 minutos
+        this.SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutos
+        this.sessionStoragePath = path.join(__dirname, 'session_storage');
+        
+        if (!fs.existsSync(this.sessionStoragePath)) {
+            fs.mkdirSync(this.sessionStoragePath);
+        }
     }
 
     createSession(userId, data) {
@@ -24,9 +30,12 @@ class SessionManager {
             ...data,
             timestamp: Date.now(),
         };
+        
+        const filePath = path.join(this.sessionStoragePath, `${userId}_session.json`);
+        fs.writeFileSync(filePath, JSON.stringify(session, null, 2));
+
         this.sessions.set(userId, session);
 
-        // Configurar limpieza automática
         setTimeout(() => {
             if (this.sessions.has(userId)) {
                 this.cleanSession(userId);
@@ -35,16 +44,23 @@ class SessionManager {
     }
 
     getSession(userId) {
-        const session = this.sessions.get(userId);
-        if (!session) return null;
+        const filePath = path.join(this.sessionStoragePath, `${userId}_session.json`);
+        
+        if (!fs.existsSync(filePath)) return null;
 
-        // Verificar si la sesión ha expirado
-        if (Date.now() - session.timestamp > this.SESSION_TIMEOUT) {
-            this.cleanSession(userId);
+        try {
+            const sessionData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            
+            if (Date.now() - sessionData.timestamp > this.SESSION_TIMEOUT) {
+                this.cleanSession(userId);
+                return null;
+            }
+
+            return sessionData;
+        } catch (error) {
+            console.error('Error reading session file:', error);
             return null;
         }
-
-        return session;
     }
 
     updateSession(userId, data) {
@@ -56,11 +72,21 @@ class SessionManager {
             ...data,
             timestamp: Date.now(),
         };
+
+        const filePath = path.join(this.sessionStoragePath, `${userId}_session.json`);
+        fs.writeFileSync(filePath, JSON.stringify(updatedSession, null, 2));
+
         this.sessions.set(userId, updatedSession);
         return true;
     }
 
     cleanSession(userId) {
+        const filePath = path.join(this.sessionStoragePath, `${userId}_session.json`);
+        
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
         this.sessions.delete(userId);
     }
 }
@@ -179,7 +205,6 @@ module.exports = {
                     return interaction.reply({ content: 'No hay preguntas disponibles', ephemeral: true });
                 }
 
-                // Crear nueva sesión
                 sessionManager.createSession(interaction.user.id, {
                     currentQuestion: 0,
                     responses: [],
@@ -332,7 +357,6 @@ module.exports = {
         } catch (error) {
             console.error('Error en el manejo de interacción:', error);
 
-            // Limpiar la sesión en caso de error
             if (interaction.user) {
                 sessionManager.cleanSession(interaction.user.id);
             }
