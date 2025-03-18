@@ -31,7 +31,7 @@ module.exports = {
                     { name : 'seend-img', value: 'seend-img' },
                     { name : 'revisar-whitelist', value: 'revisar-whitelist' },
                     { name : 'serverman' , value: 'serverman' },
-                    { name : 'serveronly', value: 'serveronly' },
+                    { name : 'serveronly', value: 'serveronly' }
                 )
         ),
 

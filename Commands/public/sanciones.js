@@ -157,12 +157,11 @@ module.exports = {
                     return interaction.send({ content: 'Tipo de sanción no válido.', ephemeral: true });
             }
 
-             // También enviar en el canal correspondiente
-             const channel = client.channels.cache.get('1306428946681696297');  // Reemplaza con el ID del canal
+            // También enviar en el canal correspondiente
+            const channel = client.channels.cache.get('1290744300946067497');  // Reemplaza con el ID del canal
             // Enviar el mensaje de sanción
             await channel.send({ content: mensajeSancion });
             interaction.reply({ content: 'Sanción enviada con exito', ephemeral: true });
-
         } catch (error) {
             console.log(error)
             interaction.reply({ content: `Ocurrio un error al ejecutar el comando ${interaction.commandName}`, ephemeral: true });

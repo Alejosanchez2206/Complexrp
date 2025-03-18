@@ -1,16 +1,12 @@
 const {
-    StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder,
-    ActionRowBuilder,
     SlashCommandBuilder,
     Client,
     ChatInputCommandInteraction,
-    ComponentType,
     EmbedBuilder
 } = require('discord.js');
 
 const permisosSchema = require('../../Models/addPermisos');
-
+const mensajeText = require('../../mensajes.json')
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -46,10 +42,10 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#00FF00') // Color verde para indicar que el servidor está activo
                 .setDescription(
-                    '🌟 **¡El servidor está activo y listo para recibirte!** 🎮\n\nHola, **queridos usuarios**. El servidor ya está disponible para que disfruten de su experiencia. 🚀 ¡Nos alegra tenerlos con nosotros!\n\n💬 No olviden mantenerse atentos a los anuncios y reglas del servidor para que todos podamos disfrutar al máximo. ¡Gracias por su paciencia y por ser parte de esta increíble comunidad! 💖'
+                    mensajeText.SERVERON
                 )
-                .setImage('https://res.cloudinary.com/dwjztzqzz/image/upload/v1733258268/afbaxkbztd6aef5j6mmm.gif') // URL de la imagen grande
-                .setFooter({ text: '¡Disfruta y diviértete en el servidor! 🎉' });
+                .setImage("https://i.imgur.com/f0AoPUW.gif") // URL de la imagen grande
+                .setFooter({ text: mensajeText.FOOTER });
 
 
             // Define el canal al que se enviará el mensaje (reemplaza 'id' por el ID del canal correcto)
@@ -66,7 +62,7 @@ module.exports = {
                 await otroCanal.send({ content: '@everyone', embeds: [embed] });
 
                 // Cambia el nombre del canal (reemplaza 'nuevo-nombre-del-canal' por el nombre que desees)
-                await otroCanal.setName('💚・ᴄᴏᴍᴘʟᴇx ꜱᴛᴀᴛᴜꜱ');
+                await otroCanal.setName('💚〡ᴄᴏᴍᴘʟᴇx ꜱᴛᴀᴛᴜꜱ');
 
 
             } else {

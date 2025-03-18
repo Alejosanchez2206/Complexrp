@@ -1,15 +1,13 @@
 const {
-    StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder,
-    ActionRowBuilder,
     SlashCommandBuilder,
     Client,
     ChatInputCommandInteraction,
-    ComponentType,
     EmbedBuilder
 } = require('discord.js');
 
 const permisosSchema = require('../../Models/addPermisos');
+const mensajeText = require('../../mensajes.json')
+
 
 
 module.exports = {
@@ -47,10 +45,10 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#FF0000') // Color rojo para indicar mantenimiento
                 .setDescription(
-                    '🔧 **¡El servidor está actualmente en mantenimiento!** 🚧\n\nHola, **queridos usuarios**. Estamos trabajando en algunas mejoras y ajustes para que su experiencia en el servidor sea aún mejor. 🚀\n\n⏳ Les pedimos paciencia mientras realizamos estos cambios. Pronto podrán disfrutar nuevamente del servidor con todas las novedades y mejoras implementadas. ¡Gracias por su comprensión y apoyo continuo! 💖'
+                    mensajeText.SERVERMAN
                 )
-                .setImage('https://res.cloudinary.com/dwjztzqzz/image/upload/v1733258526/ycssbshgy1ji3jnxuvvi.gif') // URL de la imagen
-                .setFooter({ text: '¡Mantente atento, pronto estaremos de vuelta! 🛠️' });
+                .setImage("https://i.imgur.com/7YCNrsu.gif") // URL de la imagen
+                .setFooter({ text: mensajeText.FOOTER });
 
 
             // Define el canal al que se enviará el mensaje (reemplaza 'id' por el ID del canal correcto)
@@ -67,7 +65,7 @@ module.exports = {
                 await otroCanal.send({ content: '@everyone', embeds: [embed] });
 
                 // Cambia el nombre del canal (reemplaza 'nuevo-nombre-del-canal' por el nombre que desees)
-                await otroCanal.setName('🔧・ᴄᴏᴍᴘʟᴇx ꜱᴛᴀᴛᴜꜱ');
+                await otroCanal.setName('🔧〡ᴄᴏᴍᴘʟᴇx ꜱᴛᴀᴛᴜꜱ');
 
 
             } else {

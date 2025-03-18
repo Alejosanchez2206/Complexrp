@@ -1,0 +1,114 @@
+{
+  "currentQuestion": 0,
+  "responses": [],
+  "questions": [
+    {
+      "_id": "67465942dfeeb3094131850f",
+      "guildId": "1037506904437567608",
+      "question": "Describe una escena en la que tu personaje enfrenta una decisión imposible.",
+      "options": [],
+      "type": "text"
+    },
+    {
+      "_id": "67465942dfeeb309413184fb",
+      "guildId": "1037506904437567608",
+      "question": "¿Qué reglas aplicarías para mantener el realismo en escenas IC?",
+      "options": [],
+      "type": "text"
+    },
+    {
+      "_id": "67465942dfeeb30941318504",
+      "guildId": "1037506904437567608",
+      "question": "¿Qué harías si un jugador rompe las reglas repetidamente y afecta tus escenas IC?",
+      "options": [],
+      "type": "text"
+    },
+    {
+      "_id": "67465942dfeeb3094131850c",
+      "guildId": "1037506904437567608",
+      "question": "¿Qué harías si otro jugador no acepta las consecuencias IC de sus actos?",
+      "options": [],
+      "type": "text"
+    },
+    {
+      "_id": "67465942dfeeb309413184fe",
+      "guildId": "1037506904437567608",
+      "question": "Describe cómo tu personaje se enfrentaría a un dilema ético.",
+      "options": [],
+      "type": "text"
+    },
+    {
+      "_id": "67465f08dfeeb30941318523",
+      "guildId": "1037506904437567608",
+      "question": "¿Qué es el 'Fail RP'?",
+      "options": [
+        "Realizar acciones que no tienen sentido en el rol.",
+        "Salirse del juego durante un arresto.",
+        "Respetar las leyes de tráfico en rol.",
+        "Jugar sin micrófono."
+      ],
+      "type": "select"
+    },
+    {
+      "_id": "67465f08dfeeb30941318520",
+      "guildId": "1037506904437567608",
+      "question": "¿Qué es el 'metagaming'?",
+      "options": [
+        "Usar información obtenida OOC para beneficio IC.",
+        "Interpretar a tu personaje con coherencia.",
+        "Atacar sin motivos IC.",
+        "Salirse del juego durante un rol."
+      ],
+      "type": "select"
+    },
+    {
+      "_id": "67465f08dfeeb30941318524",
+      "guildId": "1037506904437567608",
+      "question": "Un jugador te apunta con un arma, ¿qué haces?",
+      "options": [
+        "Tratar de desarmarlo físicamente.",
+        "Rolear miedo y seguir las instrucciones.",
+        "Sacar tu arma rápidamente y disparar.",
+        "Ignorar la situación."
+      ],
+      "type": "select"
+    },
+    {
+      "_id": "67465f08dfeeb30941318528",
+      "guildId": "1037506904437567608",
+      "question": "Si un jugador comete Fail RP, ¿cómo lo reportas?",
+      "options": [
+        "Usando un video como prueba y contactando al staff.",
+        "Interrumpiendo el rol y exigiendo explicaciones.",
+        "Ignorando la situación.",
+        "Llamando al jugador a un canal de voz."
+      ],
+      "type": "select"
+    },
+    {
+      "_id": "67465f08dfeeb30941318527",
+      "guildId": "1037506904437567608",
+      "question": "Estás en un robo y llega la policía, ¿qué haces?",
+      "options": [
+        "Roleas negociaciones o un enfrentamiento según tu plan IC.",
+        "Atacas directamente sin hablar.",
+        "Sales del servidor para evitar consecuencias.",
+        "Roleas rendición automáticamente."
+      ],
+      "type": "select"
+    },
+    {
+      "question": "¿Qué edad tienes (OC)?",
+      "type": "text"
+    },
+    {
+      "question": "¿Por qué quieres ser parte de la comunidad? ¿Qué servidores has visitado?",
+      "type": "text"
+    },
+    {
+      "question": "Escribe la historia de tu personaje , (Si superas los 900 caracteres, puedes subir un enlace de google doc con tu historia.)",
+      "type": "text"
+    }
+  ],
+  "timestamp": 1740518885369
+}
