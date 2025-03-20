@@ -13,7 +13,7 @@ const path = require('path');
 
 const questionsSchema = require('../../Models/questions');
 const whitelistSchema = require('../../Models/whitelistSystemSchema');
-
+const userBlacklist = require('../../Models/blackUser');
 class SessionManager {
     constructor() {
         this.sessions = new Map();
@@ -174,9 +174,13 @@ module.exports = {
             if (interaction.customId === 'whitelistSystem') {
                 const rolesUser = interaction.member.roles.cache.map(role => role.id);
                 const responseData = await whitelistSchema.findOne({ guildId: interaction.guild.id });
-
+                const validarUser = await userBlacklist.findOne({ userId: interaction.user.id  });
                 if (!responseData || !responseData.channelSend) {
                     return interaction.reply({ content: 'Configuración de whitelist no válida.', ephemeral: true });
+                }
+
+                if (validarUser) {
+                    return interaction.reply({ content: '❌ No puedes usar el sistema de whitelist.', ephemeral: true });
                 }
 
                 if (rolesUser.includes(responseData.roleId)) {
