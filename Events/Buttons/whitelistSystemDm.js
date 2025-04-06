@@ -190,17 +190,17 @@ module.exports = {
                 const guildId = interaction.guild.id;
                 const questionsWithoutOptions = await questionsSchema.aggregate([
                     { $match: { guildId: guildId, type: 'text' } },
-                    { $sample: { size: 5 } }
+                    { $sample: { size: 3 } }
                 ]);
                 const questionsWithOptions = await questionsSchema.aggregate([
                     { $match: { guildId: guildId, type: 'select' } },
-                    { $sample: { size: 5 } }
+                    { $sample: { size: 4 } }
                 ]);
 
                 const questionsPerson = [
                     { question: '¿Qué edad tienes (OC)?', type: 'text' },
                     { question: '¿Por qué quieres ser parte de la comunidad? ¿Qué servidores has visitado?', type: 'text' },
-                    { question: 'Escribe la historia de tu personaje , (Si superas los 900 caracteres, puedes subir un enlace de google doc con tu historia.)', type: 'text' },
+                    { question: 'Escribe la historia de tu personaje ,\nNombre:\nDescripción física y de personalidad:\nHistoria:\n(Si superas los 900 caracteres, puedes subir un enlace de google doc con tu historia.)', type: 'text' },
                 ];
 
                 const questions = [...questionsWithoutOptions, ...questionsWithOptions, ...questionsPerson];

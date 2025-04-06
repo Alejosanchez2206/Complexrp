@@ -158,7 +158,7 @@ module.exports = {
             }
 
             // También enviar en el canal correspondiente
-            const channel = client.channels.cache.get('1290744300946067497');  // Reemplaza con el ID del canal
+            const channel = client.channels.cache.get('1306428946681696297');  // Reemplaza con el ID del canal
             // Enviar el mensaje de sanción
             await channel.send({ content: mensajeSancion });
             interaction.reply({ content: 'Sanción enviada con exito', ephemeral: true });

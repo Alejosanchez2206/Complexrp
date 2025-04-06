@@ -27,6 +27,7 @@ module.exports = {
                 const id = footer.match(/\d+/)?.[0]; // Extraer solo los números usando una expresión regular
 
                 const dataUser = await interaction.guild.members.fetch(id);
+                if (!dataUser) return interaction.reply({ content: 'El usuario abandono el servidor.', ephemeral: true });
                 const username = dataUser.user.username;
                 const avatar = dataUser.user.displayAvatarURL({ size: 1024, extension: 'png' });
                 const whitelist = await whitelistSchema.findOne({ guildId: interaction.guild.id });

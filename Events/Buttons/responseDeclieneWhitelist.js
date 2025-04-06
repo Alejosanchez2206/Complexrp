@@ -20,6 +20,8 @@ module.exports = {
             const footer = embed.footer.text; // El texto del footer, e.g., "ID:672919914985816074"
             const id = footer.match(/\d+/)?.[0]; // Extraer solo los números usando una expresión regular
 
+            const dataUser = await interaction.guild.members.fetch(id);
+            if (!dataUser) return interaction.reply({ content: 'El usuario abandono el servidor.', ephemeral: true });
             const whitelist = await whitelistSchema.findOne({ guildId: interaction.guild.id });
 
             if (!whitelist) return interaction.reply({ content: 'No se ha configurado un sistema de whitelist.', ephemeral: true });
