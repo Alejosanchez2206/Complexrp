@@ -11,7 +11,7 @@ const stikeShema = require('../../Models/strike');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('add-stike')
+        .setName('add-strike')
         .setDescription('Añadir un strike a un usuario')
         .addUserOption(option =>
             option.setName('usuario')
