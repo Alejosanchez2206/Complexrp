@@ -83,7 +83,7 @@ module.exports = {
                 .addFields(
                     { name: '👤 Usuario', value: `<@${user.id}>`, inline: false },
                     { name: '📛 Rol añadido', value: `<@&${rolStrike}>`, inline: false },
-                    { name: '🕒 Fecha', value: new Date(Date.now() - (5 * 60 * 60 * 1000)).toLocaleString('es-CO', { timeZone: 'America/Bogota' }), inline: false },
+                    { name: '🕒 Fecha', value: `<t:${Math.floor((Date.now() - (5 * 60 * 60 * 1000)) / 1000)}:F>`, inline: false },
                     { name: '👮‍♂️ Staff', value: `<@${interaction.user.id}>`, inline: false },
 
                 )
