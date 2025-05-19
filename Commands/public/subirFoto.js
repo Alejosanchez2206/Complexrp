@@ -52,7 +52,7 @@ module.exports = {
                 "name" : "Complex"
             }
 
-            const response = await axios.post('http://localhost:5000/api/multimedia', dataInsert);
+            const response = await axios.post('http://65.19.178.135:5000/api/multimedia', dataInsert);
             const data = response.data;
 
             if (data.error) {
