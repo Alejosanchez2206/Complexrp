@@ -53,33 +53,32 @@ module.exports = {
 
 
             const embed = new EmbedBuilder()
-                .setTitle('Verificar Strike')
-                .setDescription(`El usuario ${user} tiene ${validarStrike.length} strikes`)
-                .setColor('#00FF00') // Color verde para indicar que el usuario tiene strikes
+                .setTitle('📋 Historial de Strikes')
+                .setDescription(`El usuario ${user} tiene **${validarStrike.length}** strike(s) registrados.`)
+                .setColor(validarStrike.length > 0 ? '#FFA500' : '#00FF00') // Naranja si hay strikes, verde si no
                 .setTimestamp()
                 .setFooter({
-                    text: `Complex community`,
-                    iconURL: interaction.guild.iconURL() // Icono del servidor
+                    text: 'Complex Community • Sistema de Moderación',
+                    iconURL: interaction.guild.iconURL({ dynamic: true }) || undefined
                 });
 
-            for (let i = 0; i < validarStrike.length; i++) {
-                const fechaFormateada = new Date(validarStrike[i].date).toLocaleDateString('es-ES'); // Día/Mes/Año
+            // Recorrer y agregar detalles de cada strike
+            validarStrike.forEach((strike, index) => {
+                const fechaFormateada = new Date(strike.date).toLocaleDateString('es-ES', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                });
+
                 embed.addFields({
-                    name: `🔴 Strike ${i + 1}`,
-                    value: `<@&${validarStrike[i].roleId}>`,
+                    name: `⚠️ Strike ${index + 1}`,
+                    value: [
+                        `🔹 **Rol aplicado:** <@&${strike.roleId}>`,
+                        `📅 **Fecha:** ${fechaFormateada}`,
+                        `🛡️ **Moderador:** <@${strike.staff}>`
+                    ].join('\n'),
                     inline: false
                 });
-                embed.addFields({
-                    name: `📅 Fecha`,
-                    value: `${fechaFormateada}`,
-                    inline: false
-                });
-                embed.addFields({
-                    name: `👮 Moderador`,
-                    value: `<@${validarStrike[i].staff}>`,
-                    inline: false
-                });
-            }
+            });
+
 
 
 

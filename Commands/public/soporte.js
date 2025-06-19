@@ -30,7 +30,7 @@ module.exports = {
             const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
 
             const rolesArray = rolesUser.split(',');
-            
+
             const validarRol = await permisosSchema.find({ permiso: 'soporte', guild: interaction.guild.id, rol: { $in: rolesArray } });
 
 
@@ -39,14 +39,15 @@ module.exports = {
             }
 
             const embed = new EmbedBuilder()
-                .setColor('#FFD700') // Color dorado para hacerlo más amigable
+                .setColor('#FFD700')
                 .setDescription(
-                    'Hola, **equipo maravilloso**. 😄\n\nSolo queremos recordarles que hay **personas esperando en la sala de espera** 🕒 y están deseando ser atendidas. ¡Nos encantaría que puedan atenderlos en cuanto puedan!\n\n📋 No olviden **llenar el registro del chat de voz** para que todo esté en orden. ¡Gracias por su dedicación y compromiso!'
+                    'Estimado equipo,\n\nQueremos recordarles amablemente que actualmente hay personas aguardando en la **sala de espera** 🕒. Su tiempo y atención son muy valorados, por lo que agradecemos que puedan brindarles asistencia a la brevedad posible.\n\n📋 Asimismo, les pedimos por favor **registrar su participación en el chat de voz** correspondiente para mantener todo debidamente organizado.\n\nAgradecemos sinceramente su compromiso y dedicación diaria. 🤝'
                 )
-                .setFooter({ text: 'Tu presencia hace la diferencia ❤️'});
+                .setFooter({ text: 'Su presencia marca la diferencia. ❤️' });
 
-            await interaction.reply({ content: 'Mensaje enviado', ephemeral: true });
+            await interaction.reply({ content: '📩 Mensaje enviado con éxito.', ephemeral: true });
             return interaction.channel.send({ content: `@everyone`, embeds: [embed] });
+
         } catch (error) {
             console.log(error)
             interation.reply({ content: `Ocurrio un error al ejecutar el comando ${interaction.commandName}`, ephemeral: true });

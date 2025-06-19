@@ -23,21 +23,34 @@ module.exports = {
         try {
             if (!interaction.guild) return;
             if (!interaction.isChatInputCommand()) return;
-            
+
             const embed = new EmbedBuilder()
-                .setColor('#FFD700') // Mantener el color dorado para un toque amigable
-                .setTitle('🌐 ¡Conéctate a Complex Community! 🌐') // Título atractivo
+                .setColor('#FFD700')
+                .setTitle('🌐 Cómo unirte a Complex Community 🌐')
                 .setDescription(
-                    '¡Estamos esperando por ti en **Complex Community**!\n\n' +
-                    'Aquí encontrarás aventuras increíbles, un gran equipo y todo lo que necesitas para disfrutar del mejor rol. 🚔🚑\n\n' +
-                    '🔗 **Conéctate ahora mismo usando la IP a continuación:**'
+                    '¿Tienes problemas para encontrar el servidor en la lista de FiveM? ¡No te preocupes! Aquí te explicamos paso a paso cómo conectarte fácilmente.'
                 )
                 .addFields(
-                    { name: '💻 IP del servidor', value: `\`\`\`cmd\nconnect cfx.re/join/p7y6qa\n\`\`\`` }, // IP resaltada
-                    { name: '🚀 ¡Nos vemos dentro!', value: 'Prepárate para disfrutar de una experiencia increíble.' }
+                    {
+                        name: '🔍 Opción 1: Buscar por nombre',
+                        value: 'Abre FiveM, dirígete al buscador de servidores y escribe:\n`COMPLEX COMMUNITY`\nSelecciona el servidor y haz clic en "Conectar".'
+                    },
+                    {
+                        name: '💻 Opción 2: Conexión directa por consola',
+                        value: '1️⃣ Abre FiveM\n2️⃣ Presiona la tecla `F8` para abrir la consola\n3️⃣ Copia y pega el siguiente comando:\n```cmd\nconnect cfx.re/join/p7y6qa\n```\n4️⃣ Presiona `Enter` y listo, estarás entrando al servidor.'
+                    },
+                    {
+                        name: '📌 Recomendación',
+                        value: 'Si deseas conectarte más rápido en el futuro, marca el servidor como favorito. ⭐'
+                    },
+                    {
+                        name: '🚀 ¡Nos vemos dentro!',
+                        value: 'Prepárate para vivir una experiencia única de rol junto a toda la comunidad.'
+                    }
                 )
-                .setFooter({ text: 'Gracias por ser parte de nuestra comunidad ❤️'});
-            await interaction.reply({ content: 'ip enviado', ephemeral: true });
+                .setFooter({ text: 'Gracias por ser parte de Complex Community ❤️' });
+
+            await interaction.reply({ content: '📩 Instrucciones enviadas.', ephemeral: true });
             return interaction.channel.send({ embeds: [embed] });
         } catch (error) {
             console.log(error);

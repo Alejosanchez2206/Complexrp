@@ -1,0 +1,91 @@
+{
+  "currentQuestion": 2,
+  "responses": [
+    "Si estás creando o moderando un servidor (como de rol, escritura colaborativa, juegos, etc.), aquí tienes algunas ideas de historias o eventos interesantes que podrías explorar, dependiendo del tipo de servidor:",
+    "Personalidad – ¿Es calmado, impulsivo, diplomático, agresivo?\n\nHistoria personal – ¿Tiene traumas o experiencias que lo hacen reaccionar más fuerte?\n\nIdeología propia – ¿Qué cree y por qué lo defiende?\n\nMétodo de interacción – ¿Debate, evita, manipula, confronta físicamente?\n\nCambio posible – ¿Podría cambiar de opinión o está completamente cerrado?"
+  ],
+  "questions": [
+    {
+      "_id": "67465942dfeeb309413184ac",
+      "guildId": "1037506904437567608",
+      "question": "¿Qué tipo de historias o eventos te gustaría explorar en este servidor?",
+      "options": [],
+      "type": "text"
+    },
+    {
+      "_id": "67465942dfeeb30941318517",
+      "guildId": "1037506904437567608",
+      "question": "Describe cómo tu personaje interactuaría con alguien que tiene ideologías opuestas IC.",
+      "options": [],
+      "type": "text"
+    },
+    {
+      "_id": "67465942dfeeb309413184ae",
+      "guildId": "1037506904437567608",
+      "question": "Describe una escena de rol memorable que hayas vivido.",
+      "options": [],
+      "type": "text"
+    },
+    {
+      "_id": "67465f08dfeeb30941318526",
+      "guildId": "1037506904437567608",
+      "question": "¿Cómo debes actuar si un policía te detiene por exceso de velocidad?",
+      "options": [
+        "Rolear tu justificación de forma coherente.",
+        "Negarte a hablar con el policía.",
+        "Intentar sobornarlo sin contexto.",
+        "Huir inmediatamente."
+      ],
+      "type": "select"
+    },
+    {
+      "_id": "67465f08dfeeb30941318527",
+      "guildId": "1037506904437567608",
+      "question": "Estás en un robo y llega la policía, ¿qué haces?",
+      "options": [
+        "Roleas negociaciones o un enfrentamiento según tu plan IC.",
+        "Atacas directamente sin hablar.",
+        "Sales del servidor para evitar consecuencias.",
+        "Roleas rendición automáticamente."
+      ],
+      "type": "select"
+    },
+    {
+      "_id": "67465f08dfeeb30941318525",
+      "guildId": "1037506904437567608",
+      "question": "Estás involucrado en un tiroteo y pierdes, ¿qué haces?",
+      "options": [
+        "Roleas las heridas y esperas atención médica.",
+        "Sales del servidor para evitar que te atrapen.",
+        "Vuelves inmediatamente para vengarte.",
+        "Llamas al staff para reiniciar el rol."
+      ],
+      "type": "select"
+    },
+    {
+      "_id": "67465f08dfeeb3094131852e",
+      "guildId": "1037506904437567608",
+      "question": "Eres víctima de un robo IC. ¿Qué debe hacer?",
+      "options": [
+        "Rolear miedo y cooperar con el ladrón según la situación IC.",
+        "Desconectarse para evitar perder sus pertenencias.",
+        "Negarse a rolear la situación.",
+        "Llamar a la policía IC después de que el ladrón se vaya."
+      ],
+      "type": "select"
+    },
+    {
+      "question": "¿Qué edad tienes (OC)?",
+      "type": "text"
+    },
+    {
+      "question": "¿Por qué quieres ser parte de la comunidad? ¿Qué servidores has visitado?",
+      "type": "text"
+    },
+    {
+      "question": "Escribe la historia de tu personaje ,\nNombre:\nDescripción física y de personalidad:\nHistoria:\n(Si superas los 900 caracteres, puedes subir un enlace de google doc con tu historia.)",
+      "type": "text"
+    }
+  ],
+  "timestamp": 1750299676351
+}

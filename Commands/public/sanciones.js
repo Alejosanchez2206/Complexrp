@@ -86,22 +86,25 @@ module.exports = {
                         return interaction.reply({ content: 'Debes mencionar al usuario sancionado.', ephemeral: true });
                     }
                     mensajeSancion = `
-═══════════════════════════════════════
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-👤 **Usuario Sancionado:** ${usuario}  
+🔒 **Reporte de Sanción Aplicada**
 
-📝 **Descripción de la Situación:**  
+👤 **Usuario Sancionado:** ${usuario}
+
+📝 **Descripción del Incidente:**  
 \`${situacion}\`
 
-❗ **Motivo de la Sanción:**  
+📌 **Motivo de la Sanción:**  
 \`${motivo}\`
 
-⚖️ **Sanción Aplicada:**  
+⚖️ **Sanción Ejecutada:**  
 \`${sancion}\`
 
-🔔 **Notificación:** ||@everyone||
+📣 **Notificación:** ||@everyone||
 
-═══════════════════════════════════════
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
                     `;
                     break;
 
@@ -110,22 +113,26 @@ module.exports = {
                         return interaction.reply({ content: 'Debes escribir el nombre de la organización sancionada.', ephemeral: true });
                     }
                     mensajeSancion = `
-═══════════════════════════════════════
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🏢 **Organización Sancionada:** \`${organizacionFaccion}\`  
+🏛️ **Reporte de Sanción a Organización/Facción**
 
-📝 **Descripción de la Situación:**  
+🏢 **Organización Sancionada:**  
+\`${organizacionFaccion}\`
+
+📝 **Descripción del Incidente:**  
 \`${situacion}\`
 
-❗ **Motivo de la Sanción:**  
+📌 **Motivo de la Sanción:**  
 \`${motivo}\`
 
 ⚖️ **Sanción Aplicada:**  
 \`${sancion}\`
 
-🔔 **Notificación:** ||@everyone||
+📣 **Notificación General:** ||@everyone||
 
-═══════════════════════════════════════
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
                     `;
                     break;
 
@@ -134,22 +141,26 @@ module.exports = {
                         return interaction.reply({ content: 'Debes escribir el nombre de la facción legal sancionada.', ephemeral: true });
                     }
                     mensajeSancion = `
-═══════════════════════════════════════
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-⚖️ **Facción Legal Sancionada:** \`${organizacionFaccion}\`
+📄 **Informe de Sanción - Facción Legal**
 
-📝 **Descripción de la Situación:**  
+⚖️ **Facción Sancionada:**  
+\`${organizacionFaccion}\`
+
+📝 **Descripción del Incidente:**  
 \`${situacion}\`
 
-❗ **Motivo de la Sanción:**  
+📌 **Motivo de la Sanción:**  
 \`${motivo}\`
 
-🧹 **Sanción Aplicada:**  
+🧹 **Medida Disciplinaria Aplicada:**  
 \`${sancion}\`
 
-🔔 **Notificación:** ||@everyone||
+📣 **Notificación General:** ||@everyone||
 
-═══════════════════════════════════════
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
                     `;
                     break;
 

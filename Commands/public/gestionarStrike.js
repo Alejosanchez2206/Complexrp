@@ -78,20 +78,23 @@ module.exports = {
 
             await strikeData.save();
             const embed = new EmbedBuilder()
-                .setColor('#FF0000') // Rojo para indicar un strike
-                .setTitle('⚠️ Strike aplicado')
+                .setColor('#FF0000') // Rojo para alertar de una sanción
+                .setTitle('🚨 Registro de Strike Aplicado')
+                .setDescription(
+                    'Se ha aplicado un strike conforme a las normativas establecidas en la comunidad.'
+                )
                 .addFields(
-                    { name: '👤 Usuario', value: `<@${user.id}>`, inline: false },
-                    { name: '📛 Rol añadido', value: `<@&${rolStrike}>`, inline: false },
-                    { name: '🕒 Fecha', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false },
-                    { name: '👮‍♂️ Staff', value: `<@${interaction.user.id}>`, inline: false },
-
+                    { name: '👤 Usuario Sancionado', value: `<@${user.id}>`, inline: false },
+                    { name: '🎯 Rol Asignado', value: `<@&${rolStrike}>`, inline: false },
+                    { name: '📅 Fecha de Aplicación', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false },
+                    { name: '🛡️ Moderador Responsable', value: `<@${interaction.user.id}>`, inline: false }
                 )
                 .setTimestamp()
                 .setFooter({
-                    text: `Complex community`,
-                    iconURL: interaction.guild.iconURL() // Icono del servidor
+                    text: 'Complex Community • Sistema de Moderación',
+                    iconURL: interaction.guild.iconURL({ dynamic: true }) || undefined
                 });
+
 
             // Enviar el embed al canal de logs
 
