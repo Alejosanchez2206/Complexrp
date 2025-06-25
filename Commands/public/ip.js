@@ -37,7 +37,7 @@ module.exports = {
                     },
                     {
                         name: '💻 Opción 2: Conexión directa por consola',
-                        value: '1️⃣ Abre FiveM\n2️⃣ Presiona la tecla `F8` para abrir la consola\n3️⃣ Copia y pega el siguiente comando:\n```cmd\nconnect cfx.re/join/p7y6qa\n```\n4️⃣ Presiona `Enter` y listo, estarás entrando al servidor.'
+                        value: '1️⃣ Abre FiveM\n2️⃣ Presiona la tecla `F8` para abrir la consola\n3️⃣ Copia y pega el siguiente comando:\n```cmd\nconnect cfx.re/join/lgvkjj\n```\n4️⃣ Presiona `Enter` y listo, estarás entrando al servidor.'
                     },
                     {
                         name: '📌 Recomendación',
