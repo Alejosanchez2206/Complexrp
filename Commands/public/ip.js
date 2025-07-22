@@ -5,6 +5,7 @@ const {
     EmbedBuilder
 } = require('discord.js');
 
+const config = require('../../config.json');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -24,6 +25,8 @@ module.exports = {
             if (!interaction.guild) return;
             if (!interaction.isChatInputCommand()) return;
 
+
+
             const embed = new EmbedBuilder()
                 .setColor('#FFD700')
                 .setTitle('🌐 Cómo unirte a Complex Community 🌐')
@@ -33,11 +36,11 @@ module.exports = {
                 .addFields(
                     {
                         name: '🔍 Opción 1: Buscar por nombre',
-                        value: 'Abre FiveM, dirígete al buscador de servidores y escribe:\n`COMPLEX COMMUNITY`\nSelecciona el servidor y haz clic en "Conectar".'
+                        value: 'Abre FiveM, dirígete al buscador de servidores y escribe:\n`complex  rp`\nSelecciona el servidor y haz clic en "Conectar".'
                     },
                     {
                         name: '💻 Opción 2: Conexión directa por consola',
-                        value: '1️⃣ Abre FiveM\n2️⃣ Presiona la tecla `F8` para abrir la consola\n3️⃣ Copia y pega el siguiente comando:\n```cmd\nconnect cfx.re/join/lgvkjj\n```\n4️⃣ Presiona `Enter` y listo, estarás entrando al servidor.'
+                        value: `1️⃣ Abre FiveM\n2️⃣ Presiona la tecla \`F8\` para abrir la consola\n3️⃣ Copia y pega el siguiente comando:\n\`\`\`cmd\nconnect cfx.re/join/${config.IdCFXIp}\n\`\`\`\n4️⃣ Presiona \`Enter\` y listo, estarás entrando al servidor.`
                     },
                     {
                         name: '📌 Recomendación',

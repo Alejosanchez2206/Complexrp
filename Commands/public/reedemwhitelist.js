@@ -7,6 +7,7 @@ const {
 } = require('discord.js');
 
 const whitelistInvitacionesSchema = require('../../Models/whitelistInvitacion');
+const config = require('../../config.json');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -51,7 +52,7 @@ module.exports = {
             return interaction.reply({ content: 'Este codigo ya no esta disponible , si crees que es un error contacta con los Supervisores', ephemeral: true });
         }
 
-        const logsChannel = client.channels.cache.get('1365745887225053336');
+        const logsChannel = client.channels.cache.get(config.ChannelLogs);
         if (!logsChannel) return interaction.reply({ content: 'Error al enviar el mensaje.', ephemeral: true });
 
         await whitelistInvitacionesSchema.findOneAndUpdate(

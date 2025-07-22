@@ -26,12 +26,12 @@ module.exports = {
                     { name: 'soporte', value: 'soporte' },
                     { name: 'sanciones', value: 'sanciones' },
                     { name: 'subir-foto', value: 'subir-foto' },
-                    { name : 'whitelist', value: 'whitelist' },
-                    { name : 'annunciar', value: 'annunciar' },
-                    { name : 'seend-img', value: 'seend-img' },
-                    { name : 'revisar-whitelist', value: 'revisar-whitelist' },
-                    { name : 'serverman' , value: 'serverman' },
-                    { name : 'serveronly', value: 'serveronly' }
+                    { name: 'whitelist', value: 'whitelist' },
+                    { name: 'annunciar', value: 'annunciar' },
+                    { name: 'seend-img', value: 'seend-img' },
+                    { name: 'revisar-whitelist', value: 'revisar-whitelist' },
+                    { name: 'serverman', value: 'serverman' },
+                    { name: 'serveronly', value: 'serveronly' }
                 )
         ),
 
@@ -51,7 +51,7 @@ module.exports = {
             const permiso = interaction.options.getString('permiso');
 
             const validarEspecial = await permisosEspecialSchema.findOne({ guildServidor: interaction.guild.id, guildUsuario: interaction.user.id });
-            
+
             if (!validarEspecial) { return interaction.reply({ content: 'No tienes permisos para usar este comando', ephemeral: true }); }
 
             const data = await permisosSchema.findOne({ guild: interaction.guild.id, rol: rol });

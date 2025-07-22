@@ -14,17 +14,22 @@ const permisosSchema = require('../../Models/addPermisos');
 
 const whitelistSchema = require('../../Models/whitelistSystemSchema');
 
+// Verificar la versión de discord.js y usar el estilo apropiado
+const ButtonStylePrimary = ButtonStyle?.Primary ?? 1;
+const ButtonStyleDanger = ButtonStyle?.Danger ?? 4;
+const ButtonStyleSuccess = ButtonStyle?.Success ?? 3;
+
 const buttons = new ActionRowBuilder()
     .addComponents(
         new ButtonBuilder()
             .setCustomId('WhitelistSystemSubmit')
-            .setStyle(ButtonStyle.Primary)
+            .setStyle(ButtonStylePrimary)
             .setEmoji('✅')
             .setLabel('Activar'),
 
         new ButtonBuilder()
             .setCustomId('WhitelistSystemDeclime')
-            .setStyle(ButtonStyle.Danger)
+            .setStyle(ButtonStyleDanger)
             .setEmoji('❌')
             .setLabel('Desactivar'),
     );
@@ -43,7 +48,7 @@ module.exports = {
                 .setDescription('Canal de anuncios')
                 .setRequired(true)
                 .addChannelTypes(ChannelType.GuildText)
-        )    
+        )
         .addStringOption(option =>
             option.setName('message')
                 .setDescription('Mensaje de anuncios')
@@ -89,30 +94,32 @@ module.exports = {
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('whitelistSystem')
-                        .setStyle(ButtonStyle.Success)
+                        .setStyle(ButtonStyleSuccess)
                         .setLabel('Realizar Whitelist'),
-
                 )
 
-            //Verficar que rol tiene el usuario 
+            // Diferimos la respuesta para poder editarla después
+            await interaction.deferReply({ ephemeral: true });
+
+            //Verificar que rol tiene el usuario 
             const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
-
             const rolesArray = rolesUser.split(',');
-
             const validarRol = await permisosSchema.find({ permiso: 'whitelist', guild: interaction.guild.id, rol: { $in: rolesArray } });
 
             if (validarRol.length === 0) {
-                return interaction.reply({ content: 'No tienes permisos para usar este comando', ephemeral: true });
+                return interaction.editReply({ content: 'No tienes permisos para usar este comando', ephemeral: true });
             }
 
             let systemMessage;
             const message = interaction.options.getString('message').replace(/\\n/g, '\n').substring(0, 2000);
-            const image = urlImgRegex.test(interaction.options.getString('image')) ? interaction.options.getString('image') : interaction.guild.iconURL();
-            const color = colorRegex.test(interaction.options.getString('color')) ? interaction.options.getString('color') : '#000000';
+            const imageOption = interaction.options.getString('image');
+            const image = imageOption && urlImgRegex.test(imageOption) ? imageOption : interaction.guild.iconURL();
+            const colorOption = interaction.options.getString('color');
+            const color = colorOption && colorRegex.test(colorOption) ? colorOption : '#000000';
             const channel = interaction.options.getChannel('channel');
             const role = interaction.options.getRole('role');
-            const channelresult = interaction.options.getChannel('channelresult')
-           const channelseend = interaction.options.getChannel('channellog')
+            const channelresult = interaction.options.getChannel('channelresult');
+            const channelseend = interaction.options.getChannel('channellog');
 
             const data = await whitelistSchema.findOne({ guildId: interaction.guild.id });
 
@@ -123,10 +130,10 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setDescription(message)
                 .setColor(color)
-                .setImage(image)
+                .setImage(image);
 
-            systemMessage = await interaction.reply({
-                content: 'Preview del sistema de anuncios\nEn caso de ser correcto presione el botón de aceptar',
+            systemMessage = await interaction.editReply({
+                content: 'Preview del sistema de anuncios\nEn caso de ser correcto presione el botón de aceptar',
                 embeds: [embed],
                 components: [buttons],
                 ephemeral: true
@@ -139,29 +146,62 @@ module.exports = {
             });
 
             if (confirmation.customId === 'WhitelistSystemSubmit') {
-                await interaction.guild.channels.cache.get(channel.id).send(
-                    {
-                        embeds: [embed],
-                        components: [button]
-                    });
-                
+                // Enviar el mensaje al canal especificado
+                await interaction.guild.channels.cache.get(channel.id).send({
+                    embeds: [embed],
+                    components: [button]
+                });
 
+                // Crear la entrada en la base de datos
                 await whitelistSchema.create({
                     guildId: interaction.guild.id,
                     channelId: channel.id,
-                    roleId: role.id,
-                    channelResult: channelresult.id,
-                    channelSend: channelseend.id
+                    roleId: role?.id || null,
+                    channelResult: channelresult?.id || null,
+                    channelSend: channelseend?.id || null
                 });
-                await systemMessage?.edit({ content: 'Sistema enviado con exito', components: [], ephemeral: true });
+
+                // Responder al componente y editar el mensaje original
+                await confirmation.update({
+                    content: 'Sistema enviado con éxito',
+                    embeds: [],
+                    components: []
+                });
 
             } else if (confirmation.customId === 'WhitelistSystemDeclime') {
-                await systemMessage?.edit({ content: 'Sistema desactivado con exito', components: [], ephemeral: true });
+                // Responder al componente y editar el mensaje original
+                await confirmation.update({
+                    content: 'Sistema desactivado con éxito',
+                    embeds: [],
+                    components: []
+                });
             }
 
         } catch (error) {
             console.log(error);
-            interaction.reply({ content: `Ocurrio un error al ejecutar el comando ${interaction.commandName}`, ephemeral: true });
+            
+            // Verificar si la interacción ya fue respondida o diferida
+            if (interaction.deferred && !interaction.replied) {
+                // Si fue diferida pero no respondida, usar editReply
+                try {
+                    await interaction.editReply({ 
+                        content: `Ocurrió un error al ejecutar el comando ${interaction.commandName}`, 
+                        ephemeral: true 
+                    });
+                } catch (editError) {
+                    console.log('Error al editar la respuesta:', editError);
+                }
+            } else if (!interaction.replied) {
+                // Si no fue respondida, usar reply
+                try {
+                    await interaction.reply({ 
+                        content: `Ocurrió un error al ejecutar el comando ${interaction.commandName}`, 
+                        ephemeral: true 
+                    });
+                } catch (replyError) {
+                    console.log('Error al responder:', replyError);
+                }
+            }
         }
     }
 }

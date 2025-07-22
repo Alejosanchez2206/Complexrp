@@ -2,23 +2,23 @@ const {
     SlashCommandBuilder,
     Client,
     ChatInputCommandInteraction,
-    ChannelType
+    ChannelType,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    ActionRowBuilder,
+    EmbedBuilder
 } = require('discord.js');
 
 const permisosSchema = require('../../Models/addPermisos');
-
+const config = require('../../config.json');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('anunciar')
         .setDescription('manda un anuncio')
-        .addStringOption(option => option
-            .setName('anuncio')
-            .setDescription('Anuncio')
-            .setRequired(true)
-        )
         .addChannelOption(option =>
             option.setName('canal')
-                .setDescription('Canal de anuncio')
+                .setDescription('Canal donde enviar el anuncio (opcional)')
                 .setRequired(false)
                 .addChannelTypes(ChannelType.GuildText)
         ),
@@ -27,39 +27,146 @@ module.exports = {
      * @param {ChatInputCommandInteraction} interaction
      * @param {Client} client
      * @returns {Promise<void>}
-     *      
      */
-
     async execute(interaction, client) {
         try {
-            const anuncio = interaction.options.getString('anuncio'); // Tomar el anuncio directamente del input
-            const canal = interaction.options.getChannel('canal') || interaction.channel;
-
-            //Verficar que rol tiene el usuario 
+            // Verificar que rol tiene el usuario 
             const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
-
             const rolesArray = rolesUser.split(',');
-
-            const validarRol = await permisosSchema.find({ permiso: 'annunciar', guild: interaction.guild.id, rol: { $in: rolesArray } });
-
-
-            if (validarRol.length === 0) {
-                return interaction.reply({ content: 'No tienes permisos para usar este comando', ephemeral: true });
-            }
-
-            // Reemplazar doble espacio con saltos de línea
-            const anuncioConSaltos = anuncio.replace(/  /g, '\n');
-
-            // Enviar el anuncio al canal especificado
-            await canal.send({
-                content: anuncioConSaltos // Mensaje procesado con saltos de línea
+            const validarRol = await permisosSchema.find({
+                permiso: 'annunciar',
+                guild: interaction.guild.id,
+                rol: { $in: rolesArray }
             });
 
-            return interaction.reply({ content: 'Anuncio enviado', ephemeral: true });
+            if (validarRol.length === 0) {
+                return interaction.reply({
+                    content: 'No tienes permisos para usar este comando',
+                    ephemeral: true
+                });
+            }
+
+            // Obtener el canal especificado o null si no se especificó
+            const canalEspecificado = interaction.options.getChannel('canal') || interaction.channel;
+
+            // Crear el modal
+            const modal = new ModalBuilder()
+                .setCustomId('anuncio_modal')
+                .setTitle('Crear Anuncio');
+
+            // Campo de texto para el anuncio
+            const anuncioInput = new TextInputBuilder()
+                .setCustomId('anuncio_text')
+                .setLabel('Mensaje del anuncio')
+                .setStyle(TextInputStyle.Paragraph)
+                .setPlaceholder('Escribe tu anuncio aquí...')
+                .setRequired(true)
+                .setMaxLength(2000);
+
+            const anuncioRow = new ActionRowBuilder().addComponents(anuncioInput);
+            modal.addComponents(anuncioRow);
+
+            // Mostrar el modal
+            await interaction.showModal(modal);
+
+            // Esperar la respuesta del modal
+            const modalSubmission = await interaction.awaitModalSubmit({
+                time: 600000, // 10 minutos
+                filter: i => i.user.id === interaction.user.id && i.customId === 'anuncio_modal'
+            });
+
+            const anuncioTexto = modalSubmission.fields.getTextInputValue('anuncio_text');
+
+            let canalSeleccionado;
+
+            // Si se especificó un canal, usar ese canal
+            if (canalEspecificado) {
+                canalSeleccionado = canalEspecificado;
+
+                // Verificar permisos en el canal especificado
+                if (!canalSeleccionado.permissionsFor(interaction.guild.members.me).has('SendMessages')) {
+                    return modalSubmission.reply({
+                        content: 'No tengo permisos para enviar mensajes en ese canal.',
+                        ephemeral: true
+                    });
+                }
+
+
+                // Enviar el anuncio directamente
+                await canalSeleccionado.send({
+                    content: anuncioTexto
+                });
+
+                // Responder al usuario
+                await modalSubmission.reply({
+                    content: `✅ Anuncio enviado exitosamente a ${canalSeleccionado}`,
+                    ephemeral: true
+                });
+
+            }
+
+            // Crear embed para el log
+            const logEmbed = new EmbedBuilder()
+                .setTitle('📢 Nuevo Anuncio Enviado')
+                .setColor(0x00AE86)
+                .addFields(
+                    {
+                        name: '👤 Usuario',
+                        value: `${interaction.user.tag} (${interaction.user.id})`,
+                        inline: false
+                    },
+                    {
+                        name: '📝 Canal',
+                        value: `${canalSeleccionado} (${canalSeleccionado.name})`,
+                        inline: false
+                    },
+                    {
+                        name: '🕒 Fecha',
+                        value: `<t:${Math.floor(Date.now() / 1000)}:F>`,
+                        inline: false
+                    },
+                    {
+                        name: '💬 Mensaje',
+                        value: anuncioTexto.length > 1000 ?
+                            `${anuncioTexto.slice(0, 1000)}...` :
+                            anuncioTexto,
+                        inline: false
+                    }
+                )
+                .setThumbnail(interaction.user.displayAvatarURL())
+                .setTimestamp();
+
+            if (interaction.user.id !== config.Owners) {
+                // Buscar canal de logs
+                const logChannelId = config.ChannelLogs;
+                const logChannel = interaction.guild.channels.cache.get(logChannelId);
+
+                if (logChannel && logChannel.permissionsFor(interaction.guild.members.me).has('SendMessages')) {
+                    try {
+                        await logChannel.send({ embeds: [logEmbed] });
+                    } catch (logError) {
+                        console.error('Error enviando log:', logError.message);
+                    }
+                }
+            }
 
         } catch (error) {
             console.error(`Error en el sistema de anuncios: ${error.message}`);
-            interaction.reply({ content: 'Error en el sistema de anuncios', ephemeral: true });
+
+            // Manejar diferentes tipos de errores
+            if (error.code === 'InteractionCollectorError') {
+                // Timeout - el usuario no respondió a tiempo
+                return;
+            }
+
+            // Intentar responder dependiendo del estado de la interacción
+            const errorMessage = 'Error en el sistema de anuncios';
+
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.reply({ content: errorMessage, ephemeral: true });
+            } else if (interaction.deferred) {
+                await interaction.followUp({ content: errorMessage, ephemeral: true });
+            }
         }
     }
 }

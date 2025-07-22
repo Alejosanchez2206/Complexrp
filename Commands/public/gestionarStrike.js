@@ -8,7 +8,7 @@ const {
 
 const permisosSchema = require('../../Models/addPermisos');
 const stikeShema = require('../../Models/strike');
-
+const config = require('../../config.json');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('add-strike')
@@ -64,7 +64,7 @@ module.exports = {
 
             await member.roles.add(rolStrike);
 
-            const logsChannel = client.channels.cache.get('1358551779196932257');
+            const logsChannel = client.channels.cache.get(config.ChannelLogs);
             if (!logsChannel) return interaction.reply({ content: '❌ Canal de logs no encontrado.', ephemeral: true });
 
             // Guardar el strike en la base de datos

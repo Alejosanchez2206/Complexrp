@@ -39,13 +39,20 @@ module.exports = {
             }
 
             const embed = new EmbedBuilder()
-                .setColor('#FFD700')
+                .setColor('#FFD700') // Puedes ajustar el color si deseas
+                .setTitle('📢 Aviso para los Staff Activos')
                 .setDescription(
-                    'Estimado equipo,\n\nQueremos recordarles amablemente que actualmente hay personas aguardando en la **sala de espera** 🕒. Su tiempo y atención son muy valorados, por lo que agradecemos que puedan brindarles asistencia a la brevedad posible.\n\n📋 Asimismo, les pedimos por favor **registrar su participación en el chat de voz** correspondiente para mantener todo debidamente organizado.\n\nAgradecemos sinceramente su compromiso y dedicación diaria. 🤝'
+                    'Estimado equipo de Staff,\n\n' +
+                    'Se les informa que **hay ciudadanos esperando en la sala de espera** 🕒. Se requiere la presencia de los staff disponible para atender a los usuarios lo antes posible.\n\n' +
+                    '**Instrucciones:**\n' +
+                    '- Diríjanse a un canal de soporte adecuado , entrar en la parte crear canal.\n' +
+                    '- Una vez tomen el caso o asistan, **registren su participación en el chat correspondinete** para mantener el orden y la trazabilidad de los casos antendidos en soporte.\n\n' +
+                    'Agradecemos su pronta respuesta. 🤝'
                 )
-                .setFooter({ text: 'Su presencia marca la diferencia. ❤️' });
+                .setFooter({ text: 'La eficiencia y el orden son pilares de nuestra institución.' })
+                .setTimestamp(); // Opcional: añade la fecha y hora del mensaje
 
-            await interaction.reply({ content: '📩 Mensaje enviado con éxito.', ephemeral: true });
+            await interaction.reply({ content: '✅ Anuncio emitido al canal.', ephemeral: true });
             return interaction.channel.send({ content: `@everyone`, embeds: [embed] });
 
         } catch (error) {
