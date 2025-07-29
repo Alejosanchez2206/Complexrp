@@ -9,10 +9,9 @@ module.exports = {
             if (!interaction.isButton()) return;
             
             if (interaction.customId === 'WhitelistSystemDeclineButton') {
-                // Diferir la respuesta para tener más tiempo de procesamiento
+                
                 await interaction.deferUpdate();
 
-                // Verificar que el usuario tiene el rol adecuado
                 const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
                 const rolesArray = rolesUser.split(',');
                 const validarRol = await permisosSchema.find({ 
@@ -28,7 +27,7 @@ module.exports = {
                     });
                 }
 
-                // Validar que el mensaje tiene embeds
+               
                 if (!interaction.message.embeds || interaction.message.embeds.length === 0) {
                     return interaction.followUp({ 
                         content: 'No se pudo obtener la información del embed.', 
@@ -38,7 +37,7 @@ module.exports = {
 
                 const embed = interaction.message.embeds[0];
                 
-                // Validar que el embed tiene footer
+                
                 if (!embed.footer || !embed.footer.text) {
                     return interaction.followUp({ 
                         content: 'No se pudo obtener el ID del usuario desde el footer.', 
@@ -58,7 +57,7 @@ module.exports = {
 
                 const id = idMatch[0];
 
-                // Obtener información del usuario con manejo de errores
+                
                 let dataUser;
                 try {
                     dataUser = await interaction.guild.members.fetch(id);
@@ -77,7 +76,7 @@ module.exports = {
                     });
                 }
 
-                // Obtener configuración de whitelist
+               
                 const whitelist = await whitelistSchema.findOne({ guildId: interaction.guild.id });
                 if (!whitelist) {
                     return interaction.followUp({ 
@@ -86,7 +85,7 @@ module.exports = {
                     });
                 }
 
-                // Validar que el canal de resultados existe
+               
                 const channel = interaction.guild.channels.cache.get(whitelist.channelResult);
                 if (!channel) {
                     return interaction.followUp({ 
@@ -96,7 +95,6 @@ module.exports = {
                 }
 
                 try {
-                    // Crear un nuevo embed basado en el original - Corregido para v14
                     const updatedEmbed = EmbedBuilder.from(embed)
                         .setTitle('Whitelist Rechazada')
                         .setColor('#FF0000')
@@ -104,15 +102,15 @@ module.exports = {
                             text: 'Rechazada por: ' + interaction.user.username, 
                             iconURL: interaction.user.displayAvatarURL() 
                         })
-                        .setTimestamp(); // Agregar timestamp para mejor tracking
+                        .setTimestamp(); 
 
-                    // Actualizar el mensaje original con el nuevo embed
+                   
                     await interaction.message.edit({ 
                         embeds: [updatedEmbed], 
                         components: [] 
                     });                  
 
-                    // Enviar mensaje al canal de resultados
+                  
                     await channel.send({ 
                         content: `Lo sentimos <@${id}>, tu solicitud de whitelist ha sido rechazada.`,
                         embeds: [] 
@@ -129,7 +127,6 @@ module.exports = {
         } catch (err) {
             console.log('Error general en whitelist decline:', err);
             
-            // Intentar responder al usuario si es posible
             try {
                 if (!interaction.replied && !interaction.deferred) {
                     await interaction.reply({ 

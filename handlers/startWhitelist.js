@@ -20,11 +20,11 @@ module.exports = async (interaction) => {
     }
 
     if (isBlacklisted) {
-        return interaction.reply({ content: '❌ No puedes usar el sistema de whitelist.', ephemeral: true });
+        return interaction.reply({ content: '❌ Estas asignado a la blacklist de la comunidad.', ephemeral: true });
     }
 
     if (rolesUser.includes(responseData.roleId)) {
-        return interaction.reply({ content: '❌ Ya estás verificado.', ephemeral: true });
+        return interaction.reply({ content: '✅ Ya tienes tu rol de whitelist.', ephemeral: true });
     }
 
     const guildId = interaction.guild.id;
@@ -34,7 +34,7 @@ module.exports = async (interaction) => {
     ]);
 
     const personalQuestions = [
-        { question: '¿Qué edad tienes (OC)?', type: 'text' },
+        { question: '¿Qué edad tienes (OOC)?', type: 'text' },
         { question: '¿Por qué quieres ser parte de la comunidad? ¿Qué servidores has visitado?', type: 'text' },
         {
             question: 'Escribe la historia de tu personaje:\nNombre:\nDescripción física y de personalidad:\nHistoria:\n(Si superas los 900 caracteres, puedes subir un enlace de Google Docs).',

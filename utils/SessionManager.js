@@ -1,4 +1,3 @@
-// src/utils/SessionManager.js
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -16,7 +15,6 @@ class SessionManager {
         } catch {
             await fs.mkdir(this.sessionStoragePath, { recursive: true });
         }
-        // Limpiar sesiones caducadas al iniciar
         await this.cleanupExpiredSessions();
     }
 

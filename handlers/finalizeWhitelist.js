@@ -24,7 +24,7 @@ module.exports = async (interaction, session, responses) => {
     responses.forEach((res, i) => {
         embed.addFields({
             name: `${i + 1}) ${session.questions[i].question}`,
-            value: res || 'No respondido',
+            value: res || 'Sin respuesta',
             inline: false
         });
     });

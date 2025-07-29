@@ -5,7 +5,6 @@ const sendQuestionEmbed = require('./sendQuestionEmbed');
 const finalizeWhitelist = require('./finalizeWhitelist');
 
 module.exports = async (interaction, questionIndex, response) => {
-    // Check if interaction is still valid
     if (!interaction || interaction.replied || interaction.deferred) {
         console.log('Interaction is no longer valid or already responded to');
         return;
@@ -35,7 +34,6 @@ module.exports = async (interaction, questionIndex, response) => {
     }
 
     if (session.currentQuestion + 1 < session.questions.length) {
-        // Use deferUpdate ONLY if we haven't already responded
         try {
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.deferUpdate();
@@ -49,7 +47,6 @@ module.exports = async (interaction, questionIndex, response) => {
             );
         } catch (error) {
             console.error('Error updating interaction:', error);
-            // If deferUpdate fails, try to reply normally
             if (!interaction.replied) {
                 try {
                     await interaction.reply({
