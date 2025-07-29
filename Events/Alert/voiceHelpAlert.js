@@ -5,6 +5,7 @@ const config = require('../../config.json');
 const voiceStartTime = new Map();
 const notifiedUsers = new Set();
 
+// Variables de configuración
 const CHECK_INTERVAL = 10 * 1000;
 const WAIT_THRESHOLD = 5 * 60 * 1000;
 
