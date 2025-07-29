@@ -1,197 +1,124 @@
-const { Events, EmbedBuilder } = require('discord.js');
+const { Events, EmbedBuilder, ChannelType } = require('discord.js');
 const config = require('../../config.json');
+
 
 const voiceStartTime = new Map();
 const notifiedUsers = new Set();
 
-const CHECK_INTERVAL = 1 * 60 * 1000;
-const WAIT_THRESHOLD = 10 * 60 * 1000;
+const CHECK_INTERVAL = 10 * 1000;
+const WAIT_THRESHOLD = 5 * 60 * 1000;
 
 function formatDuration(ms) {
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes} minuto(s), ${seconds} segundo(s)`;
+    return `${minutes}m ${seconds}s`;
 }
 
-module.exports = (client) => {
-    if (!config.waitingRoomChannelId) {
-        console.warn('⚠️ waitingRoomChannelId no está configurado en config.json');
-    }
-    if (!config.staffAlertChannel) {
-        console.warn('⚠️ staffAlertChannel no está configurado en config.json');
-    }
+module.exports = {
+    name: Events.VoiceStateUpdate,
+    once: false,
 
-    client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+    /**
+     * Maneja actualizaciones en el estado de voz de los miembros.
+     * @param {import('discord.js').VoiceState} oldState
+     * @param {import('discord.js').VoiceState} newState
+     * @param {import('discord.js').Client} client
+     */
+    async execute(oldState, newState, client) {
         const userId = newState.member.user.id;
         const guildId = newState.guild.id;
         const key = `${guildId}-${userId}`;
+        const username = newState.member.user.tag;
 
-        if (!oldState.channel && newState.channel) {
-            if (!config.waitingRoomChannelId || newState.channel.id === config.waitingRoomChannelId) {
-                voiceStartTime.set(key, Date.now());
-                console.log(`👤 ${newState.member.user.tag} se unió a la sala de espera: ${newState.channel.name}`);
-            } else {
-                console.log(`👤 ${newState.member.user.tag} se unió al canal: ${newState.channel.name} (no es sala de espera)`);
-            }
+
+        if (!oldState.channel && newState.channel?.id === config.waitingRoomChannelId) {
+            voiceStartTime.set(key, Date.now());
+            console.log(`✅ [JOIN] ${username} entró a la sala de espera.`);
         }
 
-        else if (oldState.channel && !newState.channel) {
+        else if (oldState.channel?.id === config.waitingRoomChannelId && !newState.channel) {
             voiceStartTime.delete(key);
             notifiedUsers.delete(key);
-            console.log(`👤 ${oldState.member.user.tag} salió completamente del canal de voz`);
+            console.log(`📤 [LEAVE] ${username} salió del canal de voz.`);
         }
 
-
-        else if (oldState.channel && newState.channel && oldState.channel.id !== newState.channel.id) {
-
-
-            if (config.waitingRoomChannelId && oldState.channel.id === config.waitingRoomChannelId) {
+        else if (oldState.channel?.id !== newState.channel?.id) {
+            if (oldState.channel?.id === config.waitingRoomChannelId) {
                 voiceStartTime.delete(key);
                 notifiedUsers.delete(key);
-                console.log(`👤 ${newState.member.user.tag} salió de la sala de espera hacia: ${newState.channel.name}`);
+                console.log(`🔄 [OUT] ${username} cambió de canal desde la sala de espera.`);
             }
-
-
-            else if (config.waitingRoomChannelId && newState.channel.id === config.waitingRoomChannelId) {
-                if (!voiceStartTime.has(key)) {
-                    voiceStartTime.set(key, Date.now());
-                    console.log(`👤 ${newState.member.user.tag} entró a la sala de espera desde: ${oldState.channel.name}`);
-                } else {
-                    console.log(`👤 ${newState.member.user.tag} ya estaba siendo monitoreado, manteniendo tiempo original`);
-                }
-            }
-
-            else {
-                console.log(`👤 ${newState.member.user.tag} cambió de ${oldState.channel.name} a ${newState.channel.name}`);
+            if (newState.channel?.id === config.waitingRoomChannelId) {
+                voiceStartTime.set(key, Date.now());
+                console.log(`🔄 [IN] ${username} cambió de canal a la sala de espera.`);
             }
         }
-    });
 
-    setInterval(async () => {
-        const now = Date.now();
-        const guildMap = new Map();
+        if (!client._monitorInitialized) {
+            console.log('⏱️ Iniciando monitoreo de usuarios en sala de espera...');
+            setInterval(() => checkWaitingUsers(client), CHECK_INTERVAL);
+            client._monitorInitialized = true;
+        }
+    }
+};
 
-        console.log(`🔍 Verificando usuarios en espera... (${voiceStartTime.size} usuarios monitoreados)`);
+/**
+ * Verifica periódicamente qué usuarios han pasado el umbral de espera
+ * y envía una notificación al canal del staff.
+ */
+async function checkWaitingUsers(client) {
+    const now = Date.now();
+    const guildMap = new Map();
 
-        for (const [key, startTime] of voiceStartTime.entries()) {
-            const [guildId, userId] = key.split('-');
-            const guild = client.guilds.cache.get(guildId);
-            if (!guild) {
-                console.warn(`⚠️ Servidor no encontrado: ${guildId}`);
-                voiceStartTime.delete(key);
-                notifiedUsers.delete(key);
-                continue;
-            }
+    for (const [key, startTime] of voiceStartTime.entries()) {
+        const [guildId, userId] = key.split('-');
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) continue;
 
-            const member = guild.members.cache.get(userId);
-            if (!member || !member.voice.channel) {
-                console.log(`👤 Usuario ${userId} ya no está en canal de voz, removiendo del monitoreo`);
-                voiceStartTime.delete(key);
-                notifiedUsers.delete(key);
-                continue;
-            }
+        const member = guild.members.cache.get(userId);
+        if (!member?.voice.channel || member.voice.channel.id !== config.waitingRoomChannelId) {
+            voiceStartTime.delete(key);
+            notifiedUsers.delete(key);
+            continue;
+        }
 
-            const shouldMonitor = !config.waitingRoomChannelId || member.voice.channel.id === config.waitingRoomChannelId;
-
-            if (!shouldMonitor) {
-                console.log(`👤 ${member.user.tag} ya no está en sala de espera, removiendo del monitoreo`);
-                voiceStartTime.delete(key);
-                notifiedUsers.delete(key);
-                continue;
-            }
-
-            const timeElapsed = now - startTime;
-            if (timeElapsed < WAIT_THRESHOLD) continue;
-
-            if (!guildMap.has(guildId)) {
-                guildMap.set(guildId, []);
-            }
-
+        const timeElapsed = now - startTime;
+        if (timeElapsed >= WAIT_THRESHOLD) {
+            if (!guildMap.has(guildId)) guildMap.set(guildId, []);
             guildMap.get(guildId).push({ member, timeElapsed, key });
         }
+    }
 
+    for (const [guildId, users] of guildMap.entries()) {
+        const guild = client.guilds.cache.get(guildId);
+        const channel = guild.channels.cache.get(config.staffAlertChannel);
+        if (!channel || channel.type !== ChannelType.GuildText) continue;
 
-        for (const [guildId, users] of guildMap.entries()) {
-            const usersToNotify = users.filter(u => !notifiedUsers.has(u.key));
+        const usersToNotify = users.filter(u => !notifiedUsers.has(u.key));
+        if (usersToNotify.length === 0) continue;
 
-            if (usersToNotify.length === 0) {
-                console.log(`ℹ️ No hay usuarios nuevos para notificar en servidor ${guildId}`);
-                continue;
-            }
+        const list = users.map(({ member, timeElapsed }) => {
+            const isNew = usersToNotify.some(u => u.key === `${guildId}-${member.user.id}`);
+            return `${isNew ? '🆕 ' : '⏳ '} ${member.user.tag} — ${formatDuration(timeElapsed)}`;
+        }).join('\n');
+        const embed = new EmbedBuilder()
+            .setTitle('📌 Usuarios en Sala de Espera')
+            .setColor('#FF0000')
+            .setDescription('Se ha detectado que los siguientes usuarios llevan un tiempo considerable esperando en la sala de espera.')
+            .addFields({ name: `👥 Total: ${users.length}`, value: list })
+            .setFooter({ text: `Servidor: ${guild.name}`, iconURL: guild.iconURL({ dynamic: true }) })
+            .setTimestamp();
 
-            const guild = client.guilds.cache.get(guildId);
-            const logChannel = guild.channels.cache.get(config.staffAlertChannel);
-
-            if (!logChannel) {
-                console.error(`❌ Canal de alertas no encontrado en ${guild.name}. ID configurado: ${config.staffAlertChannel}`);
-                continue;
-            }
-
-            const allUsersList = users.map(({ member, timeElapsed }) => {
-                const isNew = usersToNotify.some(u => u.key === `${guildId}-${member.user.id}`);
-                const indicator = isNew ? '🆕' : '⏳';
-                return `${indicator} ${member.user.tag} — ${formatDuration(timeElapsed)} en espera.`;
-            }).join('\n');
-
-            const newUsersList = usersToNotify.map(({ member, timeElapsed }) => {
-                return `• ${member.user.tag} — ${formatDuration(timeElapsed)}`;
-            }).join('\n');
-
-            const embed = new EmbedBuilder()
-                .setTitle('🕒 Atención requerida: Usuario(s) en Sala de Espera')
-                .setColor('#FFA500')
-                .setDescription(
-                    'Se ha detectado que uno o más usuarios han permanecido en la **sala de espera** durante más de 10 minutos.\n\n' +
-                    'Tu atención puede marcar una gran diferencia para su experiencia en el servidor.'
-                )
-                .addFields(
-                    {
-                        name: `👥 Todos los usuarios en espera (+10 min) [${users.length}]`,
-                        value: allUsersList || 'Ninguno',
-                        inline: false
-                    }
-                )
-                .setTimestamp()
-                .setFooter({
-                    text: `Servidor: ${guild.name} | Nuevos: ${usersToNotify.length}`,
-                    iconURL: guild.iconURL({ dynamic: true })
-                });
-
-
-            if (users.length > usersToNotify.length) {
-                embed.addFields({
-                    name: `🆕 Usuarios recién detectados [${usersToNotify.length}]`,
-                    value: newUsersList,
-                    inline: false
-                });
-            }
-
-            embed.addFields({
-                name: '📌 Recomendación',
-                value: 'Te invitamos cordialmente a revisar su situación y brindarles el apoyo necesario. \n' +
-                    'Una atención oportuna fortalece nuestra comunidad y demuestra nuestro compromiso con todos los miembros.',
-                inline: false
+        try {
+            await channel.send({
+                content: `🔔 Estimado equipo, les informamos que hay miembros esperando atención en la sala de espera. ||@everyone||`,
+                embeds: [embed]
             });
-
-            try {
-                console.log(`📤 Enviando notificación para ${usersToNotify.length} usuario(s) en ${guild.name}`);
-
-                await logChannel.send({
-                    content: `@everyone Usuarios en sala de espera por más de 10 minutos.`,
-                    embeds: [embed]
-                });
-
-                for (const { key } of usersToNotify) {
-                    notifiedUsers.add(key);
-                }
-                console.log(`✅ Notificación enviada exitosamente en ${guild.name}`);
-            } catch (error) {
-                console.error(`❌ Error al enviar alerta en ${guild.name}:`, error);
-            }
+            usersToNotify.forEach(u => notifiedUsers.add(u.key));
+            console.log(`📢 Notificados en ${guild.name}: ${usersToNotify.length} usuarios.`);
+        } catch (e) {
+            console.error(`❌ Error notificando en ${guild.name}:`, e.message);
         }
-    }, CHECK_INTERVAL);
 
-    setInterval(() => {
-        console.log(`📊 Estado del monitor: ${voiceStartTime.size} usuarios monitoreados, ${notifiedUsers.size} notificados`);
-    }, 5 * 60 * 1000);
-};
+    }
+}
