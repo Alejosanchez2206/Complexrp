@@ -3,7 +3,8 @@ const { Schema , model } = require('mongoose');
 const tabsStaffSchema = new Schema({
     guildId : String,
     roleId : String,
-    tabStaff : String
+    tabStaff : String, 
+    mentions : Boolean
 }, {
     versionKey: false
 })

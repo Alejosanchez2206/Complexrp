@@ -1,13 +1,13 @@
 const { Events, EmbedBuilder, ChannelType } = require('discord.js');
 const config = require('../../config.json');
-
+const tabsStaffSchema = require('../../Models/tabsStaffSchema');
 
 const voiceStartTime = new Map();
 const notifiedUsers = new Set();
 
 // Variables de configuración
 const CHECK_INTERVAL = 10 * 1000;
-const WAIT_THRESHOLD = 5 * 60 * 1000;
+const WAIT_THRESHOLD = 3 * 60 * 1000;
 
 function formatDuration(ms) {
     const minutes = Math.floor(ms / 60000);
@@ -30,7 +30,6 @@ module.exports = {
         const guildId = newState.guild.id;
         const key = `${guildId}-${userId}`;
         const username = newState.member.user.tag;
-
 
         if (!oldState.channel && newState.channel?.id === config.waitingRoomChannelId) {
             voiceStartTime.set(key, Date.now());
@@ -98,10 +97,14 @@ async function checkWaitingUsers(client) {
         const usersToNotify = users.filter(u => !notifiedUsers.has(u.key));
         if (usersToNotify.length === 0) continue;
 
+        let roleMentions = `<@&${config.pingRolStaff}>`;
+
         const list = users.map(({ member, timeElapsed }) => {
             const isNew = usersToNotify.some(u => u.key === `${guildId}-${member.user.id}`);
-            return `${isNew ? '🆕 ' : '⏳ '} ${member.user.tag} — ${formatDuration(timeElapsed)}`;
+            const globalName = member.user.globalName || member.user.username;
+            return `${isNew ? '🆕 ' : '⏳ '} <@${member.user.id}> (${globalName}) — ${formatDuration(timeElapsed)}`;
         }).join('\n');
+
         const embed = new EmbedBuilder()
             .setTitle('📌 Usuarios en Sala de Espera')
             .setColor('#FF0000')
@@ -112,7 +115,7 @@ async function checkWaitingUsers(client) {
 
         try {
             await channel.send({
-                content: `🔔 Estimado equipo, les informamos que hay miembros esperando atención en la sala de espera. ||@everyone||`,
+                content: `🔔 Estimado equipo, les informamos que hay miembros esperando atención en la sala de espera. ||${roleMentions}||`,
                 embeds: [embed]
             });
             usersToNotify.forEach(u => notifiedUsers.add(u.key));
@@ -120,6 +123,5 @@ async function checkWaitingUsers(client) {
         } catch (e) {
             console.error(`❌ Error notificando en ${guild.name}:`, e.message);
         }
-
     }
 }
