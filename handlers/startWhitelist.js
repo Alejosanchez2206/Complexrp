@@ -29,8 +29,8 @@ module.exports = async (interaction) => {
 
     const guildId = interaction.guild.id;
     const [textQuestions, selectQuestions] = await Promise.all([
-        questionsSchema.aggregate([{ $match: { guildId, type: 'text' } }, { $sample: { size: 3 } }]),
-        questionsSchema.aggregate([{ $match: { guildId, type: 'select' } }, { $sample: { size: 4 } }])
+        questionsSchema.aggregate([{ $match: { guildId, type: 'text' } }, { $sample: { size: 7 } }]),
+        questionsSchema.aggregate([{ $match: { guildId, type: 'select' } }, { $sample: { size: 3 } }])
     ]);
 
     const personalQuestions = [
