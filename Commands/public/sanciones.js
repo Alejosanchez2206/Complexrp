@@ -218,11 +218,7 @@ module.exports = {
             const sancionEmbed = new EmbedBuilder()
                 .setColor(embedConfig.color)
                 .setTitle(embedConfig.titulo)
-                .setTimestamp()
-                .setFooter({
-                    text: `Sanción aplicada por ${interaction.user.tag}`,
-                    iconURL: interaction.user.displayAvatarURL()
-                });
+                .setTimestamp()               
 
             // Campos según tipo
             if (esIndividual) {
