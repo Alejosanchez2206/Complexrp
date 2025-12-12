@@ -289,8 +289,8 @@ module.exports = {
             // Guardar en base de datos
             const sancionGuardada = await Sancion.create({
                 guildId: interaction.guild.id,
-                userId: usuario?.id || null,
-                userTag: usuario?.tag || null,
+                userId: usuario?.id || "N/A",
+                userTag: usuario?.tag || "N/A",
                 tipo: tipoSancion,
                 organizacion: organizacion || null,
                 motivos,
