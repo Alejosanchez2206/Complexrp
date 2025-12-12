@@ -42,6 +42,17 @@ module.exports = {
                 return;
             }
 
+            // ✅ ELIMINAR EL MENSAJE DEL USUARIO QUE EJECUTÓ EL COMANDO (!test)
+            try {
+                if (botPermissions.has('ManageMessages')) {
+                    await message.delete();
+                    console.log(`✅ Mensaje de comando eliminado: ${message.content} de ${message.author.tag}`);
+                }
+            } catch (deleteError) {
+                console.log(`⚠️ No se pudo eliminar el mensaje de comando en ${message.channel.name}: ${deleteError.message}`);
+                // Continuar ejecutando el comando aunque no se pueda eliminar
+            }
+
             // Procesar según el tipo de comando
             if (customCmd.tipo === 'texto') {
                 // Comando de texto simple
@@ -60,7 +71,7 @@ module.exports = {
                     await message.reply({
                         content: '❌ Ocurrió un error al ejecutar este comando personalizado.',
                         allowedMentions: { repliedUser: false }
-                    }).catch(() => { });
+                    }).catch(() => {});
                 }
             } catch (replyError) {
                 console.error('Error al enviar mensaje de error:', replyError);
@@ -90,7 +101,7 @@ async function handleTextoCommand(message, customCmd) {
             response = response.slice(0, 1997) + '...';
         }
 
-        // Enviar el mensaje
+        // Enviar la respuesta del bot (ESTE MENSAJE NO SE ELIMINA)
         await message.channel.send({
             content: response,
             allowedMentions: {
@@ -182,7 +193,7 @@ async function handleEmbedCommand(message, customCmd, botPermissions) {
         // Timestamp
         embed.setTimestamp();
 
-        // Enviar el embed
+        // Enviar el embed (ESTE MENSAJE NO SE ELIMINA)
         await message.channel.send({
             embeds: [embed],
             allowedMentions: {
@@ -199,7 +210,7 @@ async function handleEmbedCommand(message, customCmd, botPermissions) {
             await message.reply({
                 content: '❌ Error al cargar las imágenes del embed. Verifica que las URLs sean válidas.',
                 allowedMentions: { repliedUser: false }
-            }).catch(() => { });
+            }).catch(() => {});
         } else {
             throw error;
         }
