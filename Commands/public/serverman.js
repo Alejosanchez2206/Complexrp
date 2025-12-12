@@ -5,7 +5,7 @@ const {
     EmbedBuilder
 } = require('discord.js');
 
-const permisosSchema = require('../../Models/addPermisos');
+const validarPermiso = require('../../utils/ValidarPermisos');
 const mensajeText = require('../../mensajes.json')
 
 
@@ -28,16 +28,17 @@ module.exports = {
             if (!interaction.guild) return;
             if (!interaction.isChatInputCommand()) return;
 
-            //Verficar que rol tiene el usuario
-            const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
-            const rolesArray = rolesUser.split(',');
+            // ===== VALIDAR PERMISOS =====
+            const tienePermiso = await validarPermiso(interaction, 'serverman');
 
-            const validarRol = await permisosSchema.find({ permiso: 'serverman', guild: interaction.guild.id, rol: { $in: rolesArray } });
-
-
-            if (validarRol.length === 0) {
-                return interaction.reply({ content: 'No tienes permisos para usar este comando', ephemeral: true });
+            if (!tienePermiso) {
+                return interaction.reply({
+                    content: '❌ No tienes permisos para usar este comando\n> Necesitas el permiso: `serverman`',
+                    ephemeral: true
+                });
             }
+
+
 
             // Crea el embed
 

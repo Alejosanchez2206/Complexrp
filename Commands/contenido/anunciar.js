@@ -10,7 +10,7 @@ const {
     EmbedBuilder
 } = require('discord.js');
 
-const permisosSchema = require('../../Models/addPermisos');
+const validarPermiso = require('../../utils/ValidarPermisos');
 const config = require('../../config.json');
 module.exports = {
     data: new SlashCommandBuilder()
@@ -30,21 +30,16 @@ module.exports = {
      */
     async execute(interaction, client) {
         try {
-            // Verificar que rol tiene el usuario 
-            const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
-            const rolesArray = rolesUser.split(',');
-            const validarRol = await permisosSchema.find({
-                permiso: 'annunciar',
-                guild: interaction.guild.id,
-                rol: { $in: rolesArray }
-            });
+            // ===== VALIDAR PERMISOS =====
+            const tienePermiso = await validarPermiso(interaction, 'annunciar');
 
-            if (validarRol.length === 0) {
+            if (!tienePermiso) {
                 return interaction.reply({
-                    content: 'No tienes permisos para usar este comando',
+                    content: '❌ No tienes permisos para usar este comando\n> Necesitas el permiso: `annunciar`',
                     ephemeral: true
                 });
             }
+
 
             // Obtener el canal especificado o null si no se especificó
             const canalEspecificado = interaction.options.getChannel('canal') || interaction.channel;

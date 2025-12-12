@@ -5,7 +5,7 @@ const {
     EmbedBuilder
 } = require('discord.js');
 
-const permisosSchema = require('../../Models/addPermisos');
+const validarPermiso = require('../../utils/ValidarPermisos');
 const mensajeText = require('../../mensajes.json')
 
 module.exports = {
@@ -25,19 +25,17 @@ module.exports = {
         try {
             if (!interaction.guild) return;
             if (!interaction.isChatInputCommand()) return;
+            // ===== VALIDAR PERMISOS =====
+            const tienePermiso = await validarPermiso(interaction, 'serveronly');
 
-            //Verficar que rol tiene el usuario
-            const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
-            const rolesArray = rolesUser.split(',');
-
-            const validarRol = await permisosSchema.find({ permiso: 'serveronly', guild: interaction.guild.id, rol: { $in: rolesArray } });
-
-
-            if (validarRol.length === 0) {
-                return interaction.reply({ content: 'No tienes permisos para usar este comando', ephemeral: true });
+            if (!tienePermiso) {
+                return interaction.reply({
+                    content: '❌ No tienes permisos para usar este comando\n> Necesitas el permiso: `serveronly`',
+                    ephemeral: true
+                });
             }
 
-            // Crea el embed
+
             // Crea el embed
             const embed = new EmbedBuilder()
                 .setColor('#00FF00') // Color verde para indicar que el servidor está activo

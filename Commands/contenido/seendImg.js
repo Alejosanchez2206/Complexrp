@@ -7,7 +7,7 @@ const {
 } = require('discord.js');
 
 
-const permisosSchema = require('../../Models/addPermisos');
+const validarPermiso = require('../../utils/ValidarPermisos');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -29,15 +29,14 @@ module.exports = {
     async execute(interaction, client) {
         try {
             if (!interaction.guild) return;
-            const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
+            // ===== VALIDAR PERMISOS =====
+            const tienePermiso = await validarPermiso(interaction, 'seend_img');
 
-            const rolesArray = rolesUser.split(',');
-
-            const validarRol = await permisosSchema.find({ permiso: 'seend-img', guild: interaction.guild.id, rol: { $in: rolesArray } });
-
-
-            if (validarRol.length === 0) {
-                return interaction.reply({ content: 'No tienes permisos para usar este comando', ephemeral: true });
+            if (!tienePermiso) {
+                return interaction.reply({
+                    content: '❌ No tienes permisos para usar este comando\n> Necesitas el permiso: `seend_img`',
+                    ephemeral: true
+                });
             }
 
             const attachment = interaction.options.getAttachment('imagen');

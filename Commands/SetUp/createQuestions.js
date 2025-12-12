@@ -6,7 +6,7 @@ const {
     EmbedBuilder,
 } = require('discord.js');
 
-const permisosSchema = require('../../Models/addPermisos');
+const validarPermiso = require('../../utils/ValidarPermisos');
 const questionsSchema = require('../../Models/questions');
 
 module.exports = {
@@ -29,17 +29,15 @@ module.exports = {
         try {
             const pregunta = interaction.options.getString('pregunta');
 
-            //Verficar que rol tiene el usuario 
-            const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
+            // ===== VALIDAR PERMISOS =====
+            const tienePermiso = await validarPermiso(interaction, 'whitelist');
 
-            const rolesArray = rolesUser.split(',');
-
-            const validarRol = await permisosSchema.find({ permiso: 'whitelist', guild: interaction.guild.id, rol: { $in: rolesArray } });
-
-            if (validarRol.length === 0) {
-                return interaction.reply({ content: 'No tienes permisos para usar este comando', ephemeral: true });
+            if (!tienePermiso) {
+                return interaction.reply({
+                    content: '❌ No tienes permisos para usar este comando\n> Necesitas el permiso: `whitelist`',
+                    ephemeral: true
+                });
             }
-
             const question = await questionsSchema.create({
                 question: pregunta,
                 guildId: interaction.guild.id

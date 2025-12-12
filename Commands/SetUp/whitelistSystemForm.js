@@ -10,7 +10,7 @@ const {
     ComponentType
 } = require('discord.js');
 
-const permisosSchema = require('../../Models/addPermisos');
+const validarPermiso = require('../../utils/ValidarPermisos');
 
 const whitelistSchema = require('../../Models/whitelistSystemSchema');
 
@@ -101,13 +101,14 @@ module.exports = {
             // Diferimos la respuesta para poder editarla después
             await interaction.deferReply({ ephemeral: true });
 
-            //Verificar que rol tiene el usuario 
-            const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
-            const rolesArray = rolesUser.split(',');
-            const validarRol = await permisosSchema.find({ permiso: 'whitelist', guild: interaction.guild.id, rol: { $in: rolesArray } });
+            // ===== VALIDAR PERMISOS =====
+            const tienePermiso = await validarPermiso(interaction, 'whitelist');
 
-            if (validarRol.length === 0) {
-                return interaction.editReply({ content: 'No tienes permisos para usar este comando', ephemeral: true });
+            if (!tienePermiso) {
+                return interaction.reply({
+                    content: '❌ No tienes permisos para usar este comando\n> Necesitas el permiso: `whitelist`',
+                    ephemeral: true
+                });
             }
 
             let systemMessage;
@@ -179,14 +180,14 @@ module.exports = {
 
         } catch (error) {
             console.log(error);
-            
+
             // Verificar si la interacción ya fue respondida o diferida
             if (interaction.deferred && !interaction.replied) {
                 // Si fue diferida pero no respondida, usar editReply
                 try {
-                    await interaction.editReply({ 
-                        content: `Ocurrió un error al ejecutar el comando ${interaction.commandName}`, 
-                        ephemeral: true 
+                    await interaction.editReply({
+                        content: `Ocurrió un error al ejecutar el comando ${interaction.commandName}`,
+                        ephemeral: true
                     });
                 } catch (editError) {
                     console.log('Error al editar la respuesta:', editError);
@@ -194,9 +195,9 @@ module.exports = {
             } else if (!interaction.replied) {
                 // Si no fue respondida, usar reply
                 try {
-                    await interaction.reply({ 
-                        content: `Ocurrió un error al ejecutar el comando ${interaction.commandName}`, 
-                        ephemeral: true 
+                    await interaction.reply({
+                        content: `Ocurrió un error al ejecutar el comando ${interaction.commandName}`,
+                        ephemeral: true
                     });
                 } catch (replyError) {
                     console.log('Error al responder:', replyError);
