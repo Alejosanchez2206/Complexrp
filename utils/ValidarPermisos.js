@@ -12,10 +12,10 @@ const validarPermiso = async (interaction, permisoRequerido) => {
         const member = interaction.member;
 
         // Si es administrador, siempre tiene permiso
-       /*  if (member.permissions.has(PermissionFlagsBits.Administrator)) {
+        if (member.permissions.has(PermissionFlagsBits.Administrator)) {
             console.log(`[PERMISOS] ${member.user.tag} tiene permiso '${permisoRequerido}' (es administrador)`);
             return true;
-        } */
+        }
 
         const rolesDelMiembro = member.roles.cache;
 
