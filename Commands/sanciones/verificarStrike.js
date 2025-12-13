@@ -6,7 +6,7 @@ const {
     PermissionFlagsBits
 } = require('discord.js');
 
-const permisosSchema = require('../../Models/addPermisos');
+const validarPermiso = require('../../utils/ValidarPermisos');
 const stikeShema = require('../../Models/strike');
 
 
@@ -31,18 +31,15 @@ module.exports = {
             if (!interaction.guild) return;
             if (!interaction.isChatInputCommand()) return;
 
-            //Verficar que rol tiene el usuario 
-            const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
+            // ===== VALIDAR PERMISOS =====
+            const tienePermiso = await validarPermiso(interaction, 'aplicar_sancion');
 
-            const rolesArray = rolesUser.split(',');
-
-            const validarRol = await permisosSchema.find({ permiso: 'sanciones', guild: interaction.guild.id, rol: { $in: rolesArray } });
-
-
-            if (validarRol.length === 0) {
-                return interaction.reply({ content: 'No tienes permisos para usar este comando', ephemeral: true });
+            if (!tienePermiso) {
+                return interaction.reply({
+                    content: '❌ No tienes permisos para usar este comando\n> Necesitas el permiso: `aplicar_sancion`',
+                    ephemeral: true
+                });
             }
-
             const user = interaction.options.getUser('usuario');
 
             const validarStrike = await stikeShema.find({ guildId: interaction.guild.id, userId: user.id });

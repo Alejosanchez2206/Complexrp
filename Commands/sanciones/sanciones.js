@@ -8,7 +8,7 @@ const {
     ButtonStyle
 } = require('discord.js');
 
-const permisosSchema = require('../../Models/addPermisos');
+const validarPermiso = require('../../utils/ValidarPermisos');
 const Sancion = require('../../Models/sanciones');
 const UsuarioSancionado = require('../../Models/usuarioSancionado');
 const config = require('../../config.json');
@@ -85,18 +85,13 @@ module.exports = {
             await interaction.deferReply({ ephemeral: true });
 
             console.log(`Comando sanciones ejecutado por: ${interaction.user.tag} (${interaction.user.id})`);
+            // ===== VALIDAR PERMISOS =====
+            const tienePermiso = await validarPermiso(interaction, 'aplicar_sancion');
 
-            // Verificar permisos
-            const rolesUser = interaction.member.roles.cache.map(role => role.id);
-            const validarRol = await permisosSchema.find({
-                permiso: 'sanciones',
-                guild: interaction.guild.id,
-                rol: { $in: rolesUser }
-            });
-
-            if (validarRol.length === 0) {
-                return interaction.editReply({
-                    content: '❌ No tienes permisos para usar este comando.'
+            if (!tienePermiso) {
+                return interaction.reply({
+                    content: '❌ No tienes permisos para usar este comando\n> Necesitas el permiso: `aplicar_sancion`',
+                    ephemeral: true
                 });
             }
 
@@ -218,7 +213,7 @@ module.exports = {
             const sancionEmbed = new EmbedBuilder()
                 .setColor(embedConfig.color)
                 .setTitle(embedConfig.titulo)
-                .setTimestamp()               
+                .setTimestamp()
 
             // Campos según tipo
             if (esIndividual) {

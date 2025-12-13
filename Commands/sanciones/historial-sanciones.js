@@ -1,7 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const UsuarioSancionado = require('../../Models/usuarioSancionado');
 const Sancion = require('../../Models/sanciones');
-const permisosSchema = require('../../Models/addPermisos');
+const validarPermiso = require('../../utils/ValidarPermisos');
+
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -28,23 +29,16 @@ module.exports = {
 
             console.log(`Comando historial-sanciones ejecutado por: ${interaction.user.tag} (${interaction.user.id})`);
 
-            // Verificar permisos
-            const rolesUser = interaction.member.roles.cache.map(role => role.id);
-            const validarRol = await permisosSchema.find({
-                permiso: 'sanciones',
-                guild: interaction.guild.id,
-                rol: { $in: rolesUser }
-            });
+            // ===== VALIDAR PERMISOS =====
+            const tienePermiso = await validarPermiso(interaction, 'ver_historial_sanciones');
 
-            // Permitir si tiene permisos especiales O permisos de moderación
-            const hasPermission = validarRol.length > 0 || 
-                                 interaction.member.permissions.has(PermissionFlagsBits.ModerateMembers);
-
-            if (!hasPermission) {
-                return interaction.editReply({
-                    content: '❌ No tienes permisos para usar este comando.'
+            if (!tienePermiso) {
+                return interaction.reply({
+                    content: '❌ No tienes permisos para usar este comando\n> Necesitas el permiso: `ver_historial_sanciones`',
+                    ephemeral: true
                 });
             }
+
 
             // Obtener usuario
             const usuario = interaction.options.getUser('usuario');
@@ -57,7 +51,7 @@ module.exports = {
 
             // Buscar datos del usuario
             let usuarioData;
-            
+
             try {
                 usuarioData = await UsuarioSancionado.findOne({
                     guildId: interaction.guild.id,
@@ -158,29 +152,29 @@ module.exports = {
                 const sancionesTexto = sancionesActivas.slice(0, 10).map((s, i) => {
                     try {
                         let texto = `**${i + 1}.** ${getTipoEmoji(s.tipo)} **${formatTipo(s.tipo)}**`;
-                        
+
                         // Warning específico
                         if (s.warningGrupo && s.warningNumero) {
                             texto += ` (Grupo ${s.warningGrupo}-${s.warningNumero})`;
                         }
-                        
+
                         // Fecha
                         if (s.createdAt) {
                             const timestamp = Math.floor(new Date(s.createdAt).getTime() / 1000);
                             texto += `\n   📅 <t:${timestamp}:D> (<t:${timestamp}:R>)`;
                         }
-                        
+
                         // Motivos
                         if (s.motivos && Array.isArray(s.motivos) && s.motivos.length > 0) {
                             const motivosTexto = s.motivos.join(', ');
                             const motivosCorto = motivosTexto.length > 80 ? motivosTexto.slice(0, 77) + '...' : motivosTexto;
                             texto += `\n   ⚠️ ${motivosCorto}`;
                         }
-                        
+
                         // Duración para bans
                         if (s.duracionDias) {
                             texto += `\n   ⏱️ ${s.duracionDias} día${s.duracionDias !== 1 ? 's' : ''}`;
-                            
+
                             // Mostrar si ya expiró o fecha de expiración
                             if (s.fechaFin) {
                                 const fechaFin = new Date(s.fechaFin);
@@ -192,12 +186,12 @@ module.exports = {
                                 }
                             }
                         }
-                       
+
                         // ID de sanción
                         if (s._id) {
                             texto += `\n   🆔 \`${s._id}\``;
                         }
-                        
+
                         return texto;
                     } catch (error) {
                         console.error('Error procesando sanción individual:', error);
@@ -206,8 +200,8 @@ module.exports = {
                 }).join('\n\n');
 
                 // Limitar a 1024 caracteres por campo
-                const sancionesTextoFinal = sancionesTexto.length > 1024 
-                    ? sancionesTexto.slice(0, 1021) + '...' 
+                const sancionesTextoFinal = sancionesTexto.length > 1024
+                    ? sancionesTexto.slice(0, 1021) + '...'
                     : sancionesTexto;
 
                 embed.addFields({
@@ -237,8 +231,8 @@ module.exports = {
                 embed.addFields({
                     name: '🗃️ Historial Completo',
                     value: `**Total de sanciones:** ${usuarioData.sanciones.length}\n` +
-                           `**Sanciones activas:** ${sancionesActivas.length}\n` +
-                           `**Sanciones inactivas:** ${sancionesInactivas}`,
+                        `**Sanciones activas:** ${sancionesActivas.length}\n` +
+                        `**Sanciones inactivas:** ${sancionesInactivas}`,
                     inline: false
                 });
             }
