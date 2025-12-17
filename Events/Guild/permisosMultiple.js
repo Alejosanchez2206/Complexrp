@@ -32,7 +32,7 @@ const TODOS_PERMISOS = [
     { name: '👥 Gestionar Usuarios', value: 'gestionar_usuarios' },
     { name: '🎭 Gestionar Roles', value: 'gestionar_roles' },
     { name: '📁 Gestionar Canales', value: 'gestionar_canales' },
-    { name: '🔧 Configuración Bot', value: 'config_bot' },
+    { name: '🔧 Configuración Bot', value: 'config_bot' }
 ];
 
 const PERMISOS_POR_PAGINA = 25;
@@ -46,47 +46,47 @@ module.exports = {
         try {
             // ===== MANEJAR SELECT MENUS =====
             if (interaction.isStringSelectMenu()) {
-                
+
                 // MÚLTIPLE - Guardar selección
                 if (interaction.customId.startsWith('permisos_multiple_')) {
                     const parts = interaction.customId.split('_');
                     const rolId = parts[2];
                     const paginaActual = parseInt(parts[3]);
-                    
+
                     const userId = interaction.user.id;
                     const key = `${userId}_${rolId}`;
-                    
+
                     // Obtener selecciones previas
                     if (!seleccionesTemp.has(key)) {
                         seleccionesTemp.set(key, new Set());
                     }
-                    
+
                     const selecciones = seleccionesTemp.get(key);
-                    
+
                     // Limpiar selecciones de esta página y añadir las nuevas
                     const inicio = paginaActual * PERMISOS_POR_PAGINA;
                     const fin = inicio + PERMISOS_POR_PAGINA;
                     const permisosEstaPagina = TODOS_PERMISOS.slice(inicio, fin).map(p => p.value);
-                    
+
                     // Remover selecciones antiguas de esta página
                     permisosEstaPagina.forEach(p => selecciones.delete(p));
-                    
+
                     // Añadir nuevas selecciones
                     interaction.values.forEach(v => selecciones.add(v));
-                    
+
                     await interaction.deferUpdate();
                     return;
                 }
-                
+
                 // REMOVER
                 if (interaction.customId.startsWith('permisos_remover_')) {
                     const rolId = interaction.customId.split('_')[2];
                     const rol = interaction.guild.roles.cache.get(rolId);
                     const permisoARemover = interaction.values[0];
 
-                    const data = await permisosSchema.findOne({ 
-                        guild: interaction.guild.id, 
-                        rol: rolId 
+                    const data = await permisosSchema.findOne({
+                        guild: interaction.guild.id,
+                        rol: rolId
                     });
 
                     if (data) {
@@ -108,57 +108,57 @@ module.exports = {
                     return;
                 }
             }
-            
+
             // ===== MANEJAR BOTONES =====
             if (interaction.isButton()) {
-                
+
                 // NAVEGACIÓN DE PÁGINAS
                 if (interaction.customId.startsWith('permisos_page_')) {
                     const parts = interaction.customId.split('_');
                     const rolId = parts[2];
                     const accion = parts[3];
                     const paginaActual = parseInt(parts[4]);
-                    
+
                     let nuevaPagina = paginaActual;
                     if (accion === 'prev') nuevaPagina--;
                     if (accion === 'next') nuevaPagina++;
-                    
+
                     const rol = interaction.guild.roles.cache.get(rolId);
-                    const data = await permisosSchema.findOne({ 
-                        guild: interaction.guild.id, 
-                        rol: rolId 
+                    const data = await permisosSchema.findOne({
+                        guild: interaction.guild.id,
+                        rol: rolId
                     });
-                    
+
                     const permisosActuales = data?.permisos || [];
                     const userId = interaction.user.id;
                     const key = `${userId}_${rolId}`;
                     const seleccionesUsuario = seleccionesTemp.get(key) || new Set();
-                    
+
                     // Crear nuevo select menu para la nueva página
                     const totalPaginas = Math.ceil(TODOS_PERMISOS.length / PERMISOS_POR_PAGINA);
                     const inicio = nuevaPagina * PERMISOS_POR_PAGINA;
                     const fin = inicio + PERMISOS_POR_PAGINA;
                     const permisosPagina = TODOS_PERMISOS.slice(inicio, fin);
-                    
+
                     const selectMenu = new StringSelectMenuBuilder()
                         .setCustomId(`permisos_multiple_${rolId}_${nuevaPagina}`)
                         .setPlaceholder(`Selecciona permisos (Página ${nuevaPagina + 1}/${totalPaginas})`)
                         .setMinValues(1)
                         .setMaxValues(permisosPagina.length)
                         .addOptions(
-                            permisosPagina.map(permiso => 
+                            permisosPagina.map(permiso =>
                                 new StringSelectMenuOptionBuilder()
                                     .setLabel(permiso.name)
                                     .setValue(permiso.value)
                                     .setDefault(
-                                        permisosActuales.includes(permiso.value) || 
+                                        permisosActuales.includes(permiso.value) ||
                                         seleccionesUsuario.has(permiso.value)
                                     )
                             )
                         );
-                    
+
                     const row1 = new ActionRowBuilder().addComponents(selectMenu);
-                    
+
                     const botones = new ActionRowBuilder().addComponents(
                         new ButtonBuilder()
                             .setCustomId(`permisos_page_${rolId}_prev_${nuevaPagina}`)
@@ -180,7 +180,7 @@ module.exports = {
                             .setLabel('✅ Finalizar')
                             .setStyle(ButtonStyle.Success)
                     );
-                    
+
                     const embed = new EmbedBuilder()
                         .setColor('#0099FF')
                         .setTitle('📋 Añadir Múltiples Permisos')
@@ -192,43 +192,43 @@ module.exports = {
                             { name: 'Seleccionados', value: `${seleccionesUsuario.size}`, inline: true }
                         )
                         .setFooter({ text: 'Los permisos marcados ya están activos o seleccionados' });
-                    
+
                     await interaction.update({ embeds: [embed], components: [row1, botones] });
                     return;
                 }
-                
+
                 // FINALIZAR SELECCIÓN MÚLTIPLE
                 if (interaction.customId.startsWith('permisos_multiple_finalizar_')) {
                     const rolId = interaction.customId.split('_')[3];
                     const rol = interaction.guild.roles.cache.get(rolId);
-                    
+
                     const userId = interaction.user.id;
                     const key = `${userId}_${rolId}`;
                     const seleccionesUsuario = seleccionesTemp.get(key) || new Set();
-                    
+
                     if (seleccionesUsuario.size === 0) {
                         return interaction.reply({
                             content: '⚠️ No has seleccionado ningún permiso',
                             ephemeral: true
                         });
                     }
-                    
+
                     const permisosSeleccionados = Array.from(seleccionesUsuario);
-                    
-                    const data = await permisosSchema.findOne({ 
-                        guild: interaction.guild.id, 
-                        rol: rolId 
+
+                    const data = await permisosSchema.findOne({
+                        guild: interaction.guild.id,
+                        rol: rolId
                     });
-                    
+
                     let permisosAñadidos = [];
-                    
+
                     if (data) {
                         permisosSeleccionados.forEach(permiso => {
                             if (!data.permisos.includes(permiso)) {
                                 permisosAñadidos.push(permiso);
                             }
                         });
-                        
+
                         if (permisosAñadidos.length > 0) {
                             data.permisos.push(...permisosAñadidos);
                             data.updatedAt = new Date();
@@ -243,10 +243,10 @@ module.exports = {
                         await newData.save();
                         permisosAñadidos = permisosSeleccionados;
                     }
-                    
+
                     // Limpiar selecciones temporales
                     seleccionesTemp.delete(key);
-                    
+
                     const embed = new EmbedBuilder()
                         .setColor(permisosAñadidos.length > 0 ? '#00FF00' : '#FFA500')
                         .setTitle(permisosAñadidos.length > 0 ? '✅ Permisos Añadidos' : '⚠️ Sin Cambios')
@@ -257,25 +257,25 @@ module.exports = {
                         )
                         .setTimestamp()
                         .setFooter({ text: `Por ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
-                    
+
                     if (permisosAñadidos.length > 0) {
                         const permisosTexto = permisosAñadidos.map(p => `• \`${p}\``).join('\n');
                         embed.addFields({
                             name: '📝 Permisos Añadidos',
-                            value: permisosTexto.length > 1024 
-                                ? permisosTexto.substring(0, 1021) + '...' 
+                            value: permisosTexto.length > 1024
+                                ? permisosTexto.substring(0, 1021) + '...'
                                 : permisosTexto,
                             inline: false
                         });
                     }
-                    
+
                     const totalPermisos = data ? data.permisos.length : permisosSeleccionados.length;
                     embed.addFields({
                         name: '📊 Total de Permisos',
                         value: `El rol ahora tiene **${totalPermisos}** permisos configurados`,
                         inline: false
                     });
-                    
+
                     await interaction.update({ embeds: [embed], components: [] });
                     return;
                 }
@@ -283,7 +283,7 @@ module.exports = {
 
         } catch (error) {
             console.error('Error en permisos interaction:', error);
-            
+
             try {
                 if (!interaction.replied && !interaction.deferred) {
                     await interaction.reply({
