@@ -48,7 +48,8 @@ function formatChannelName(template, member) {
         .replace(/{displayName}/g, member.displayName)
         .replace(/{tag}/g, member.user.tag)
         .replace(/{nickname}/g, member.nickname || member.displayName)
-        .replace(/{id}/g, member.id);
+        .replace(/{id}/g, member.id)
+        .replace(/{number}/g, activeTemporaryChannels.size + 1);
 }
 
 /**
