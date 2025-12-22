@@ -323,7 +323,7 @@ async function handleNameModal(interaction) {
 }
 
 async function showLimitMenu(interaction, generadorId, config) {
-    const limits = [0, 2, 3, 5, 10, 15, 20, 25, 50, 99];
+    const limits = [0 , 1 , 2, 3, 5, 10, 15, 20, 25, 50, 99];
 
     const select = new StringSelectMenuBuilder()
         .setCustomId(`tv_limit_${generadorId}`)
