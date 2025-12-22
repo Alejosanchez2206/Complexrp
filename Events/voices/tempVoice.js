@@ -1,4 +1,3 @@
-// events/tempVoice.js
 const { Events, ChannelType, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const tempVoiceSchema = require('../../Models/tempVoiceConfig');
 
@@ -88,11 +87,8 @@ function canMemberCreate(member, config) {
 
 /**
  * Construye los permission overwrites para el canal temporal
- */
-/**
- * Construye los permission overwrites para el canal temporal
  * - @everyone: según privacidad (público o privado)
- * - Roles configurados: permisos exactos de la DB
+ * - Roles configurados: SOLO si están activos en el servidor y tienen permisos
  * - Owner: NO recibe permisos extras → solo lo que le den sus roles
  */
 function buildPermissionOverwrites(guild, member, config) {
@@ -119,17 +115,30 @@ function buildPermissionOverwrites(guild, member, config) {
 
     // === Roles configurados en el generador ===
     for (const roleConfig of config.rolesPermisos) {
-        if (roleConfig.permisos.length === 0) continue;
+        // Validar que el rol tenga permisos configurados
+        if (!roleConfig.permisos || roleConfig.permisos.length === 0) continue;
 
-        const allowFlags = roleConfig.permisos.map(perm => PermissionFlagsBits[perm]);
+        // IMPORTANTE: Solo aplicar permisos si el rol existe en el servidor
+        const roleExists = guild.roles.cache.has(roleConfig.roleId);
+        if (!roleExists) {
+            console.warn(`[TempVoice] Rol ${roleConfig.roleId} no existe en el servidor, se omite`);
+            continue;
+        }
 
-        overwrites.push({
-            id: roleConfig.roleId,
-            allow: allowFlags,
-            deny: [] // No denegamos nada explícitamente a menos que sea necesario
-        });
+        // Convertir los permisos de string a flags
+        const allowFlags = roleConfig.permisos
+            .map(perm => PermissionFlagsBits[perm])
+            .filter(flag => flag !== undefined); // Filtrar permisos inválidos
+
+        // Solo agregar si hay permisos válidos
+        if (allowFlags.length > 0) {
+            overwrites.push({
+                id: roleConfig.roleId,
+                allow: allowFlags,
+                deny: [] // No denegamos nada explícitamente
+            });
+        }
     }
- 
 
     return overwrites;
 }
