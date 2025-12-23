@@ -2,9 +2,11 @@
 const axios = require('axios');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 
-// Cache para tokens de Twitch
+
 let twitchAccessToken = null;
 let twitchTokenExpiry = null;
+let kickAccessToken = null;
+let kickTokenExpiry = null;
 
 const config = require('../config.json');
 
@@ -26,9 +28,6 @@ async function checkStreamStatus(platform, username) {
 
 // ==================== TWITCH ====================
 
-/**
- * Obtiene un token de acceso de Twitch
- */
 async function getTwitchAccessToken() {
     if (twitchAccessToken && twitchTokenExpiry && Date.now() < twitchTokenExpiry) {
         return twitchAccessToken;
@@ -62,9 +61,6 @@ async function getTwitchAccessToken() {
     }
 }
 
-/**
- * Verifica si un canal de Twitch está en vivo
- */
 async function checkTwitchStream(username) {
     try {
         const token = await getTwitchAccessToken();
@@ -105,8 +101,7 @@ async function checkTwitchStream(username) {
 
         const streamThumbnail = streamData.thumbnail_url
             .replace('{width}', '1920')
-            .replace('{height}', '1080')
-            + `?t=${Date.now()}`;
+            .replace('{height}', '1080') + `?t=${Date.now()}`;
 
         return {
             isLive: true,
@@ -127,139 +122,170 @@ async function checkTwitchStream(username) {
     }
 }
 
-// ==================== KICK ====================
+// ==================== KICK (API OFICIAL) ====================
 
 /**
- * Obtiene proxies gratuitos rotativos
+ * Obtiene un token de acceso de Kick (OAuth 2.1 client_credentials)
+ * POST https://id.kick.com/oauth/token?grant_type=client_credentials&client_id=...&client_secret=...
  */
-function getFreeProxies() {
-    // Lista de proxies públicos gratuitos (actualiza esta lista periódicamente)
-    return [
-        // Puedes agregar proxies gratuitos aquí
-        // 'http://proxy1.com:port',
-        // 'http://proxy2.com:port',
-    ];
+async function getKickAccessToken() {
+    if (kickAccessToken && kickTokenExpiry && Date.now() < kickTokenExpiry) {
+        return kickAccessToken;
+    }
+
+    const clientId = config.apiKeys?.kickClientId;
+    const clientSecret = config.apiKeys?.kickClientSecret;
+
+    if (!clientId || !clientSecret) {
+        throw new Error('API keys de Kick no configuradas');
+    }
+
+    try {
+        const response = await axios.post('https://id.kick.com/oauth/token', null, {
+            params: {
+                grant_type: 'client_credentials',
+                client_id: clientId,
+                client_secret: clientSecret
+            },
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        kickAccessToken = response.data.access_token;
+        kickTokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000;
+
+        console.log('✅ Token de Kick obtenido exitosamente');
+        return kickAccessToken;
+
+    } catch (error) {
+        console.error('❌ Error obteniendo token de Kick:', error.response?.data || error.message);
+        throw new Error('No se pudo obtener el token de Kick');
+    }
 }
 
 /**
- * Headers avanzados para evadir Cloudflare
+ * Obtiene info de canal de Kick a partir del slug (username)
+ * Intenta múltiples endpoints para mayor compatibilidad
  */
-function getKickHeaders() {
-    const userAgents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-    ];
+async function getKickChannelInfo(username) {
+    const token = await getKickAccessToken();
 
-    const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
+    const res = await axios.get('https://api.kick.com/public/v1/channels', {
+        params: { slug: username },
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json'
+        },
+        timeout: 10000
+    });
+
+    console.log('[Kick debug] /channels raw response:', res.data);
+
+    // En tu caso la estructura es { data: [ { broadcaster_user_id, slug, ... } ], message: 'OK' }
+    const items = res.data.data || res.data.channels || res.data;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        throw new Error(`Canal de Kick no encontrado en /channels: ${username}`);
+    }
+
+    const ch = items[0];
+
+    const broadcasterUserId = ch.broadcaster_user_id;
+    if (!broadcasterUserId) {
+        throw new Error(
+            `Canal de Kick sin broadcaster_user_id: ${username} (objeto: ${JSON.stringify(ch)})`
+        );
+    }
+
+    console.log(
+        `[Kick debug] Canal encontrado: slug=${ch.slug || username}, broadcaster_user_id=${broadcasterUserId}`
+    );
 
     return {
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'User-Agent': randomUA,
-        'Referer': 'https://kick.com/',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+        broadcasterUserId,
+        channelId: ch.id || broadcasterUserId,
+        avatar: ch.user?.profile_pic || ch.profile_pic || null,
+        slug: ch.slug || username
     };
 }
 
+
 /**
- * Verifica si un canal de Kick está en vivo
- * SOLUCIÓN ALTERNATIVA: Usar API no oficial o RSS
+ * Verifica si un canal de Kick está en vivo usando /public/v1/livestreams
+ * GET https://api.kick.com/public/v1/livestreams?broadcaster_user_id=<id>
  */
 async function checkKickStream(username) {
-    // Método 1: Intentar Kick API v2
     try {
-        const response = await axios.get(`https://kick.com/api/v2/channels/${username}`, {
-            headers: getKickHeaders(),
-            timeout: 10000
-        });
+        const channelInfo = await getKickChannelInfo(username);
 
-        return parseKickResponse(response.data, username);
-    } catch (error) {
-        if (error.response?.status === 404) {
-            return { isLive: false, platform: 'kick', username };
-        }
-    }
+        const token = await getKickAccessToken();
 
-    // Método 2: Usar KickAPI no oficial (servicio de terceros)
-    try {
-        console.log(`🔍 [Kick] ${username}: Usando API no oficial...`);
-        
-        // kickbot API (servicio de terceros gratuito)
-        const response = await axios.get(`https://kick.com/api/v2/channels/${username}`, {
+        const res = await axios.get('https://api.kick.com/public/v1/livestreams', {
+            params: { broadcaster_user_id: channelInfo.broadcasterUserId },
             headers: {
-                'User-Agent': 'KickBot/1.0',
-                'Accept': 'application/json'
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json'
             },
             timeout: 10000
         });
 
-        if (response.data && response.data.livestream) {
-            return parseKickResponse(response.data, username);
+        console.log('[Kick debug] /livestreams raw response:', JSON.stringify(res.data, null, 2));
+
+        const streams = res.data.livestreams || res.data.data || res.data;
+        if (!streams || streams.length === 0) {
+            return {
+                isLive: false,
+                platform: 'kick',
+                username
+            };
         }
+
+        const s = streams[0];
+
+        let streamThumbnail = null;
+        // Manejo seguro de thumbnail con múltiples posibles estructuras
+        if (s.thumbnail?.url) {
+            streamThumbnail = s.thumbnail.url + `?t=${Date.now()}`;
+        } else if (typeof s.thumbnail === 'string') {
+            streamThumbnail = s.thumbnail + `?t=${Date.now()}`;
+        } else if (s.stream_thumbnail) {
+            streamThumbnail = s.stream_thumbnail + `?t=${Date.now()}`;
+        } else if (s.preview_thumbnail) {
+            streamThumbnail = s.preview_thumbnail + `?t=${Date.now()}`;
+        }
+
+        console.log(`✅ [Kick] ${username}: EN VIVO (${s.viewer_count || 0} viewers)`);
+
+        return {
+            isLive: true,
+            platform: 'kick',
+            username,
+            title: s.session_title || s.title || 'Sin título',
+            viewers: s.viewer_count || s.viewers || 0,
+            startedAt: s.started_at || s.created_at,
+            thumbnail: streamThumbnail,
+            avatar: channelInfo.avatar,
+            categories: s.categories?.map(c => c.name) || [],
+            language: s.language || null,
+            channelId: channelInfo.channelId
+        };
+
     } catch (error) {
-        // Ignorar
+        console.error(`❌ [Kick] Error verificando stream (${username}):`, error.message);
+        return {
+            isLive: false,
+            platform: 'kick',
+            username,
+            error: error.message
+        };
     }
-
-    // Método 3: Fallback - asumir offline y registrar
-    console.log(`⚠️ [Kick] ${username}: Cloudflare bloqueó todas las peticiones, asumiendo offline`);
-    
-    return {
-        isLive: false,
-        platform: 'kick',
-        username,
-        error: 'cloudflare_blocked'
-    };
 }
 
-/**
- * Parsea la respuesta de la API de Kick
- */
-function parseKickResponse(data, username) {
-    if (!data || !data.livestream) {
-        return { isLive: false, platform: 'kick', username };
-    }
 
-    const channel = data;
-    const livestream = data.livestream;
-
-    // Avatar
-    let avatar = null;
-    if (channel.user?.profile_pic) {
-        avatar = channel.user.profile_pic;
-    } else if (channel.profile_pic) {
-        avatar = channel.profile_pic;
-    }
-
-    // Captura del stream
-    let streamThumbnail = null;
-    if (livestream.thumbnail?.url) {
-        streamThumbnail = livestream.thumbnail.url + `?t=${Date.now()}`;
-    }
-
-    console.log(`✅ [Kick] ${username}: EN VIVO (${livestream.viewer_count || 0} viewers)`);
-
-    return {
-        isLive: true,
-        platform: 'kick',
-        username,
-        title: livestream.session_title || 'Sin título',
-        viewers: livestream.viewer_count || 0,
-        startedAt: livestream.created_at,
-        thumbnail: streamThumbnail,
-        avatar: avatar,
-        categories: livestream.categories?.map(c => c.name) || [],
-        language: livestream.language || null,
-        channelId: channel.id || null
-    };
-}
 
 // ==================== TIKTOK ====================
 
-/**
- * Verifica si un usuario de TikTok está en vivo
- */
 async function checkTikTokStream(username) {
     try {
         const response = await axios.get(`https://www.tiktok.com/@${username}/live`, {
@@ -274,51 +300,109 @@ async function checkTikTokStream(username) {
 
         const html = response.data;
 
-        const isLive = html.includes('"LiveRoom"') ||
-            html.includes('is_live":true') ||
-            html.includes('"status":2') ||
-            html.includes('LIVE');
+        // ===== 1. OBTENER VALORES CRÍTICOS DEL HTML =====
+        const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
+        const pageTitle = titleTagMatch ? titleTagMatch[1] : '';
+        const isLiveByTitle = /is LIVE - TikTok LIVE/i.test(pageTitle);
 
+        const hasLiveRoom = /"LiveRoom"/i.test(html);
+        const isLiveFlag =
+            /"is_live"\s*:\s*true/i.test(html) ||
+            /"isLive"\s*:\s*true/i.test(html);
+
+        const statusMatch = html.match(/"status"\s*:\s*(\d+)/i);
+        const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : null;
+
+        const viewersMatch =
+            html.match(/"viewerCount["\s:]+(\d+)/i) ||
+            html.match(/"userCount["\s:]+(\d+)/i);
+        const rawViewers = viewersMatch ? parseInt(viewersMatch[1], 10) : 0;
+
+        // Debug
+        console.log('[TikTok debug]', {
+            username,
+            pageTitle,
+            isLiveByTitle,
+            hasLiveRoom,
+            isLiveFlag,
+            statusCode,
+            rawViewers
+        });
+
+        // ===== 2. LÓGICA ESTRICTA BASADA EN STATUS CODE =====
+        // Status codes conocidos:
+        // 2 = En vivo (confirmado)
+        // 4 = Offline/Terminado (aunque el título diga "is LIVE")
+        // null/otros = Estado desconocido
+
+        // REGLA 1: Si status NO es 2, está offline
+        if (statusCode !== 2) {
+            console.log(`❌ [TikTok] ${username} no está en vivo (status: ${statusCode})`);
+            return {
+                isLive: false,
+                platform: 'tiktok',
+                username
+            };
+        }
+
+        // REGLA 2: Si status es 2, validar con otros indicadores
+        const hasMinimumIndicators =
+            (isLiveByTitle || hasLiveRoom || isLiveFlag) &&
+            rawViewers >= 0; // Aceptamos 0 viewers al inicio
+
+        if (!hasMinimumIndicators) {
+            console.log(`❌ [TikTok] ${username} status 2 pero sin indicadores suficientes`);
+            return {
+                isLive: false,
+                platform: 'tiktok',
+                username
+            };
+        }
+
+        // ===== 3. EXTRAER DATOS DEL STREAM =====
         let title = 'En vivo';
-        let viewers = 0;
+        let viewers = rawViewers;
         let streamThumbnail = null;
         let avatar = null;
 
-        const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
-        if (titleMatch) {
-            title = titleMatch[1].replace(' LIVE | TikTok', '').trim();
+        // Título
+        if (pageTitle) {
+            title = pageTitle
+                .replace(/is LIVE - TikTok LIVE/i, '')
+                .replace(/LIVE \| TikTok/i, '')
+                .replace(/\| TikTok LIVE/i, '')
+                .replace(/[(\[].*?[)\]]/g, '')
+                .trim();
         }
 
-        const viewersMatch = html.match(/"viewerCount["\s:]+(\d+)/i);
-        if (viewersMatch) {
-            viewers = parseInt(viewersMatch[1]);
-        }
-
+        // Avatar
         const avatarPatterns = [
-            /"avatarLarger":"([^"]+)"/,
-            /"avatarMedium":"([^"]+)"/,
-            /"avatarThumb":"([^"]+)"/,
-            /"avatar":"([^"]+)"/
+            /"avatarLarger"\s*:\s*"([^"]+)"/,
+            /"avatarMedium"\s*:\s*"([^"]+)"/,
+            /"avatarThumb"\s*:\s*"([^"]+)"/,
+            /"avatar"\s*:\s*"([^"]+)"/
         ];
 
         for (const pattern of avatarPatterns) {
-            const avatarMatch = html.match(pattern);
-            if (avatarMatch && avatarMatch[1]) {
-                avatar = avatarMatch[1].replace(/\\u002F/g, '/');
+            const mt = html.match(pattern);
+            if (mt && mt[1]) {
+                avatar = mt[1].replace(/\\u002F/g, '/');
                 break;
             }
         }
 
+        // Thumbnail
         const thumbnailPatterns = [
-            /"cover":"([^"]+)"/,
-            /"coverUrl":"([^"]+)"/,
-            /"liveRoomCover":"([^"]+)"/
+            /"cover"\s*:\s*"([^"]+)"/,
+            /"coverUrl"\s*:\s*"([^"]+)"/,
+            /"liveRoomCover"\s*:\s*"([^"]+)"/,
+            /"roomCover"\s*:\s*"([^"]+)"/
         ];
 
         for (const pattern of thumbnailPatterns) {
-            const thumbnailMatch = html.match(pattern);
-            if (thumbnailMatch && thumbnailMatch[1]) {
-                streamThumbnail = thumbnailMatch[1].replace(/\\u002F/g, '/');
+            const mt = html.match(pattern);
+            if (mt && mt[1]) {
+                streamThumbnail = mt[1].replace(/\\u002F/g, '/');
                 if (streamThumbnail && !streamThumbnail.includes('?')) {
                     streamThumbnail += `?t=${Date.now()}`;
                 }
@@ -326,15 +410,17 @@ async function checkTikTokStream(username) {
             }
         }
 
+        console.log(`✅ [TikTok] ${username} está EN VIVO - ${viewers} viewers`);
+
         return {
-            isLive,
+            isLive: true,
             platform: 'tiktok',
             username,
-            title: isLive ? title : null,
-            viewers: isLive ? viewers : 0,
+            title,
+            viewers,
             startedAt: null,
             thumbnail: streamThumbnail,
-            avatar: avatar
+            avatar
         };
 
     } catch (error) {
@@ -347,7 +433,6 @@ async function checkTikTokStream(username) {
         }
 
         console.error(`❌ [TikTok] Error verificando stream (${username}):`, error.message);
-
         return {
             isLive: false,
             platform: 'tiktok',
@@ -357,10 +442,12 @@ async function checkTikTokStream(username) {
     }
 }
 
+
 module.exports = {
     checkStreamStatus,
     getTwitchAccessToken,
     checkTwitchStream,
+    getKickAccessToken,
     checkKickStream,
     checkTikTokStream
 };

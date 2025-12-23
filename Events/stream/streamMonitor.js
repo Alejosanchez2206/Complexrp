@@ -62,7 +62,11 @@ function initializeStreamMonitor(client) {
  */
 async function checkAllGuilds(client) {
     try {
-        const configs = await streamAlertSchema.find({});
+        const guildIds = client.guilds.cache.map(g => g.id);
+
+        const configs = await streamAlertSchema.find({
+            guildId: { $in: guildIds }
+        });
 
         if (configs.length === 0) {
             console.log('📭 [StreamMonitor] No hay configuraciones activas');
@@ -83,6 +87,7 @@ async function checkAllGuilds(client) {
         console.error('❌ [StreamMonitor] Error general:', error);
     }
 }
+
 
 /**
  * Verifica todos los streamers de una configuración
@@ -196,6 +201,9 @@ async function checkAllStreams(client, config) {
 /**
  * Envía una notificación de nuevo stream
  */
+/**
+ * Envía una notificación de nuevo stream
+ */
 async function sendStreamNotification(channel, config, streamer, streamData) {
     try {
         const platformEmoji = PLATFORM_EMOJIS[streamer.platform];
@@ -217,7 +225,7 @@ async function sendStreamNotification(channel, config, streamer, streamData) {
             .setTimestamp()
             .setFooter({ text: `🔴 EN VIVO • ${streamer.platform.toUpperCase()}` });
 
-        // Campos adicionales
+        // ===== CAMPOS ADICIONALES POR PLATAFORMA =====
         if (streamer.platform === 'twitch' && streamData.game) {
             embed.addFields({ name: '🎮 Juego', value: streamData.game, inline: true });
         }
@@ -226,12 +234,26 @@ async function sendStreamNotification(channel, config, streamer, streamData) {
             embed.addFields({ name: '📂 Categorías', value: streamData.categories.join(', '), inline: true });
         }
 
-        // ✅ AVATAR DEL STREAMER (imagen pequeña)
+        // ===== AVATAR DEL STREAMER (thumbnail pequeño) =====
         if (streamData.avatar) {
             embed.setThumbnail(streamData.avatar);
         } else {
-            // Fallback al logo de la plataforma
             embed.setThumbnail(PLATFORM_DEFAULT_AVATARS[streamer.platform]);
+        }
+
+        // ===== IMAGEN PRINCIPAL (captura del stream) =====
+        if (streamer.platform === 'tiktok') {
+            // Para TikTok: usar avatar como imagen principal si no hay thumbnail
+            if (streamData.thumbnail) {
+                embed.setImage(streamData.thumbnail);
+            } else if (streamData.avatar) {
+                embed.setImage(streamData.avatar);
+            }
+        } else {
+            // Para Twitch y Kick: usar thumbnail del stream
+            if (streamData.thumbnail) {
+                embed.setImage(streamData.thumbnail);
+            }
         }
 
         let content = message;
@@ -288,6 +310,7 @@ async function updateStreamMessage(channel, config, streamer, streamData) {
             .setTimestamp()
             .setFooter({ text: `🔴 EN VIVO • ${streamer.platform.toUpperCase()} • Actualizado` });
 
+        // ===== CAMPOS ADICIONALES POR PLATAFORMA =====
         if (streamer.platform === 'twitch' && streamData.game) {
             embed.addFields({ name: '🎮 Juego', value: streamData.game, inline: true });
         }
@@ -296,12 +319,26 @@ async function updateStreamMessage(channel, config, streamer, streamData) {
             embed.addFields({ name: '📂 Categorías', value: streamData.categories.join(', '), inline: true });
         }
 
-        
-        // ✅ AVATAR DEL STREAMER
+        // ===== AVATAR DEL STREAMER (thumbnail pequeño) =====
         if (streamData.avatar) {
             embed.setThumbnail(streamData.avatar);
         } else {
             embed.setThumbnail(PLATFORM_DEFAULT_AVATARS[streamer.platform]);
+        }
+
+        // ===== IMAGEN PRINCIPAL (captura del stream) =====
+        if (streamer.platform === 'tiktok') {
+            // Para TikTok: usar avatar como imagen principal si no hay thumbnail
+            if (streamData.thumbnail) {
+                embed.setImage(streamData.thumbnail);
+            } else if (streamData.avatar) {
+                embed.setImage(streamData.avatar);
+            }
+        } else {
+            // Para Twitch y Kick: usar thumbnail del stream
+            if (streamData.thumbnail) {
+                embed.setImage(streamData.thumbnail);
+            }
         }
 
         await message.edit({ embeds: [embed] });
