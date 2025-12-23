@@ -2,6 +2,7 @@
 const { Client } = require('discord.js');
 const mongoose = require('mongoose');
 const config = require('../../config.json');
+const { initializeStreamMonitor } = require('../stream/streamMonitor'); 
 require('colors')
 
 module.exports = {
@@ -20,5 +21,6 @@ module.exports = {
         });
 
         console.log(`Logged in as ${client.user.tag}`);
+        initializeStreamMonitor(client);
     }
 }

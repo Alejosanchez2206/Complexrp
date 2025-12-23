@@ -34,6 +34,7 @@ const CATEGORIAS_PERMISOS = {
         { name: '🖼️ Enviar Imagen', value: 'seend_img' },
         { name: '📢 Anunciar', value: 'annunciar' },
         { name: '📰 Crear Anuncio Embed', value: 'crear_anuncio_embed' },
+        { name: '🎥 Encargados de streamer ', value: 'encargados_streamer' },
     ],
     moderacion: [
         { name: '🔇 Mutear Usuario', value: 'mutear_usuario' },
