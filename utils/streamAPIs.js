@@ -329,11 +329,6 @@ async function checkTikTokStream(username) {
             rawViewers
         });
 
-        // ===== 2. LÓGICA ESTRICTA BASADA EN STATUS CODE =====
-        // Status codes conocidos:
-        // 2 = En vivo (confirmado)
-        // 4 = Offline/Terminado (aunque el título diga "is LIVE")
-        // null/otros = Estado desconocido
 
         // REGLA 1: Si status NO es 2, está offline
         if (statusCode !== 2) {

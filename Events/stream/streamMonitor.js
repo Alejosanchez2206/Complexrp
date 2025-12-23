@@ -201,9 +201,6 @@ async function checkAllStreams(client, config) {
 /**
  * Envía una notificación de nuevo stream
  */
-/**
- * Envía una notificación de nuevo stream
- */
 async function sendStreamNotification(channel, config, streamer, streamData) {
     try {
         const platformEmoji = PLATFORM_EMOJIS[streamer.platform];
