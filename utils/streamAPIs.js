@@ -164,6 +164,7 @@ function getKickHeaders() {
 /**
  * Verifica si un canal de Kick está en vivo - Método principal
  */
+
 async function checkKickStream(username) {
     // Método 1: API v2
     try {
@@ -179,8 +180,6 @@ async function checkKickStream(username) {
         if (error.response?.status === 404) {
             return { isLive: false, platform: 'kick', username };
         }
-
-        console.log(`⚠️ [Kick] ${username}: API v2 falló (${error.response?.status || error.code}), probando v1...`);
     }
 
     // Método 2: API v1
@@ -194,11 +193,111 @@ async function checkKickStream(username) {
         return parseKickResponse(response.data, username);
 
     } catch (error) {
-        console.log(`⚠️ [Kick] ${username}: API v1 falló, usando Puppeteer...`);
+        // Ignorar
     }
 
-    // Método 3: Puppeteer (definitivo contra Cloudflare)
-    return await checkKickStreamWithPuppeteer(username);
+    // Método 3: Scraping simple de la página HTML
+    try {
+        console.log(`🔍 [Kick] ${username}: APIs bloqueadas, usando scraping HTML...`);
+        
+        const response = await axios.get(`https://kick.com/${username}`, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://kick.com/',
+                'Cache-Control': 'no-cache'
+            },
+            timeout: 15000
+        });
+
+        const html = response.data;
+
+        // Verificar si está en vivo
+        let isLive = false;
+        let title = 'En vivo';
+        let viewers = 0;
+        let thumbnail = null;
+        let avatar = null;
+        let categories = [];
+
+        // Buscar datos en scripts JSON
+        const jsonMatches = html.match(/"livestream":\s*{([^}]+)}/g);
+        
+        if (jsonMatches) {
+            for (const match of jsonMatches) {
+                if (match.includes('"session_title"')) {
+                    isLive = true;
+
+                    // Título
+                    const titleMatch = match.match(/"session_title":"([^"]+)"/);
+                    if (titleMatch) {
+                        title = titleMatch[1];
+                    }
+
+                    // Viewers
+                    const viewersMatch = match.match(/"viewer_count":(\d+)/);
+                    if (viewersMatch) {
+                        viewers = parseInt(viewersMatch[1]);
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        // Buscar thumbnail en meta tags
+        const thumbMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
+        if (thumbMatch) {
+            thumbnail = thumbMatch[1] + `?t=${Date.now()}`;
+        }
+
+        // Buscar avatar
+        const avatarMatch = html.match(/"profile_pic":"([^"]+)"/);
+        if (avatarMatch) {
+            avatar = avatarMatch[1].replace(/\\\//g, '/');
+        }
+
+        // Buscar categorías
+        const catMatch = html.match(/"categories":\[([^\]]+)\]/);
+        if (catMatch) {
+            const catNames = catMatch[1].match(/"name":"([^"]+)"/g);
+            if (catNames) {
+                categories = catNames.map(m => m.match(/"([^"]+)"/)[1]);
+            }
+        }
+
+        if (!isLive) {
+            console.log(`⚪ [Kick] ${username}: Offline`);
+            return { isLive: false, platform: 'kick', username };
+        }
+
+        console.log(`✅ [Kick] ${username}: EN VIVO (${viewers} viewers) - Método: scraping`);
+
+        return {
+            isLive: true,
+            platform: 'kick',
+            username,
+            title: title,
+            viewers: viewers,
+            startedAt: null,
+            thumbnail: thumbnail,
+            avatar: avatar,
+            categories: categories,
+            language: null,
+            method: 'scraping'
+        };
+
+    } catch (error) {
+        console.error(`❌ [Kick] ${username}: Todos los métodos fallaron:`, error.message);
+        
+        return {
+            isLive: false,
+            platform: 'kick',
+            username,
+            error: 'all_methods_failed'
+        };
+    }
 }
 
 /**
