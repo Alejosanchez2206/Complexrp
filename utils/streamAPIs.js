@@ -261,7 +261,7 @@ async function checkKickStream(username) {
             isLive: true,
             platform: 'kick',
             username,
-            title: s.session_title || s.title || 'Sin título',
+            title: s.stream_title || s.title || 'Sin título',
             viewers: s.viewer_count || s.viewers || 0,
             startedAt: s.started_at || s.created_at,
             thumbnail: streamThumbnail,
