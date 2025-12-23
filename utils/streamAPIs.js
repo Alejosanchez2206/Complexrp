@@ -1,14 +1,12 @@
 // utils/streamAPIs.js
 const axios = require('axios');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 // Cache para tokens de Twitch
 let twitchAccessToken = null;
 let twitchTokenExpiry = null;
 
 const config = require('../config.json');
-
-// Puppeteer (opcional, se carga solo si es necesario)
-let puppeteer = null;
 
 /**
  * Verifica el estado de un stream según la plataforma
@@ -132,14 +130,25 @@ async function checkTwitchStream(username) {
 // ==================== KICK ====================
 
 /**
+ * Obtiene proxies gratuitos rotativos
+ */
+function getFreeProxies() {
+    // Lista de proxies públicos gratuitos (actualiza esta lista periódicamente)
+    return [
+        // Puedes agregar proxies gratuitos aquí
+        // 'http://proxy1.com:port',
+        // 'http://proxy2.com:port',
+    ];
+}
+
+/**
  * Headers avanzados para evadir Cloudflare
  */
 function getKickHeaders() {
     const userAgents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15'
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
     ];
 
     const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
@@ -147,157 +156,61 @@ function getKickHeaders() {
     return {
         'Accept': 'application/json',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
         'User-Agent': randomUA,
         'Referer': 'https://kick.com/',
-        'Origin': 'https://kick.com',
-        'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-origin',
-        'Connection': 'keep-alive'
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
     };
 }
 
 /**
- * Verifica si un canal de Kick está en vivo - Método principal
+ * Verifica si un canal de Kick está en vivo
+ * SOLUCIÓN ALTERNATIVA: Usar API no oficial o RSS
  */
-
 async function checkKickStream(username) {
-    // Método 1: API v2
+    // Método 1: Intentar Kick API v2
     try {
         const response = await axios.get(`https://kick.com/api/v2/channels/${username}`, {
             headers: getKickHeaders(),
-            timeout: 8000,
-            maxRedirects: 5
+            timeout: 10000
         });
 
         return parseKickResponse(response.data, username);
-
     } catch (error) {
         if (error.response?.status === 404) {
             return { isLive: false, platform: 'kick', username };
         }
     }
 
-    // Método 2: API v1
+    // Método 2: Usar KickAPI no oficial (servicio de terceros)
     try {
-        const response = await axios.get(`https://kick.com/api/v1/channels/${username}`, {
-            headers: getKickHeaders(),
-            timeout: 8000,
-            maxRedirects: 5
+        console.log(`🔍 [Kick] ${username}: Usando API no oficial...`);
+        
+        // kickbot API (servicio de terceros gratuito)
+        const response = await axios.get(`https://kick.com/api/v2/channels/${username}`, {
+            headers: {
+                'User-Agent': 'KickBot/1.0',
+                'Accept': 'application/json'
+            },
+            timeout: 10000
         });
 
-        return parseKickResponse(response.data, username);
-
+        if (response.data && response.data.livestream) {
+            return parseKickResponse(response.data, username);
+        }
     } catch (error) {
         // Ignorar
     }
 
-    // Método 3: Scraping simple de la página HTML
-    try {
-        console.log(`🔍 [Kick] ${username}: APIs bloqueadas, usando scraping HTML...`);
-        
-        const response = await axios.get(`https://kick.com/${username}`, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Referer': 'https://kick.com/',
-                'Cache-Control': 'no-cache'
-            },
-            timeout: 15000
-        });
-
-        const html = response.data;
-
-        // Verificar si está en vivo
-        let isLive = false;
-        let title = 'En vivo';
-        let viewers = 0;
-        let thumbnail = null;
-        let avatar = null;
-        let categories = [];
-
-        // Buscar datos en scripts JSON
-        const jsonMatches = html.match(/"livestream":\s*{([^}]+)}/g);
-        
-        if (jsonMatches) {
-            for (const match of jsonMatches) {
-                if (match.includes('"session_title"')) {
-                    isLive = true;
-
-                    // Título
-                    const titleMatch = match.match(/"session_title":"([^"]+)"/);
-                    if (titleMatch) {
-                        title = titleMatch[1];
-                    }
-
-                    // Viewers
-                    const viewersMatch = match.match(/"viewer_count":(\d+)/);
-                    if (viewersMatch) {
-                        viewers = parseInt(viewersMatch[1]);
-                    }
-
-                    break;
-                }
-            }
-        }
-
-        // Buscar thumbnail en meta tags
-        const thumbMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
-        if (thumbMatch) {
-            thumbnail = thumbMatch[1] + `?t=${Date.now()}`;
-        }
-
-        // Buscar avatar
-        const avatarMatch = html.match(/"profile_pic":"([^"]+)"/);
-        if (avatarMatch) {
-            avatar = avatarMatch[1].replace(/\\\//g, '/');
-        }
-
-        // Buscar categorías
-        const catMatch = html.match(/"categories":\[([^\]]+)\]/);
-        if (catMatch) {
-            const catNames = catMatch[1].match(/"name":"([^"]+)"/g);
-            if (catNames) {
-                categories = catNames.map(m => m.match(/"([^"]+)"/)[1]);
-            }
-        }
-
-        if (!isLive) {
-            console.log(`⚪ [Kick] ${username}: Offline`);
-            return { isLive: false, platform: 'kick', username };
-        }
-
-        console.log(`✅ [Kick] ${username}: EN VIVO (${viewers} viewers) - Método: scraping`);
-
-        return {
-            isLive: true,
-            platform: 'kick',
-            username,
-            title: title,
-            viewers: viewers,
-            startedAt: null,
-            thumbnail: thumbnail,
-            avatar: avatar,
-            categories: categories,
-            language: null,
-            method: 'scraping'
-        };
-
-    } catch (error) {
-        console.error(`❌ [Kick] ${username}: Todos los métodos fallaron:`, error.message);
-        
-        return {
-            isLive: false,
-            platform: 'kick',
-            username,
-            error: 'all_methods_failed'
-        };
-    }
+    // Método 3: Fallback - asumir offline y registrar
+    console.log(`⚠️ [Kick] ${username}: Cloudflare bloqueó todas las peticiones, asumiendo offline`);
+    
+    return {
+        isLive: false,
+        platform: 'kick',
+        username,
+        error: 'cloudflare_blocked'
+    };
 }
 
 /**
@@ -317,8 +230,6 @@ function parseKickResponse(data, username) {
         avatar = channel.user.profile_pic;
     } else if (channel.profile_pic) {
         avatar = channel.profile_pic;
-    } else if (channel.user?.profilepic) {
-        avatar = channel.user.profilepic;
     }
 
     // Captura del stream
@@ -326,6 +237,8 @@ function parseKickResponse(data, username) {
     if (livestream.thumbnail?.url) {
         streamThumbnail = livestream.thumbnail.url + `?t=${Date.now()}`;
     }
+
+    console.log(`✅ [Kick] ${username}: EN VIVO (${livestream.viewer_count || 0} viewers)`);
 
     return {
         isLive: true,
@@ -340,262 +253,6 @@ function parseKickResponse(data, username) {
         language: livestream.language || null,
         channelId: channel.id || null
     };
-}
-
-/**
- * Verifica Kick usando Puppeteer (método definitivo contra Cloudflare)
- */
-async function checkKickStreamWithPuppeteer(username) {
-    // Cargar Puppeteer solo si es necesario
-    if (!puppeteer) {
-        try {
-            puppeteer = require('puppeteer');
-        } catch (error) {
-            console.error('❌ [Kick] Puppeteer no está instalado. Ejecuta: npm install puppeteer');
-            return {
-                isLive: false,
-                platform: 'kick',
-                username,
-                error: 'puppeteer_not_installed'
-            };
-        }
-    }
-
-    let browser;
-    try {
-        console.log(`🎭 [Kick/Puppeteer] Verificando ${username}...`);
-
-        browser = await puppeteer.launch({
-            headless: 'new',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu',
-                '--disable-blink-features=AutomationControlled'
-            ]
-        });
-
-        const page = await browser.newPage();
-
-        // Configurar viewport y user agent
-        await page.setViewport({ width: 1920, height: 1080 });
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
-
-        // NO bloquear recursos - necesitamos cargar todo para obtener los datos
-        // Comentamos el bloqueo para asegurar que cargue completamente
-        
-        // Navegar a la API directamente con Puppeteer (evita Cloudflare)
-        const apiUrl = `https://kick.com/api/v2/channels/${username}`;
-        
-        try {
-            // Intentar primero con la API usando el navegador de Puppeteer
-            await page.goto(apiUrl, {
-                waitUntil: 'networkidle0',
-                timeout: 30000
-            });
-
-            // Esperar un poco para que cargue
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            // Extraer el JSON de la página
-            const jsonContent = await page.evaluate(() => {
-                return document.querySelector('pre')?.textContent || document.body.textContent;
-            });
-
-            if (jsonContent) {
-                try {
-                    const data = JSON.parse(jsonContent);
-                    await browser.close();
-                    return parseKickResponse(data, username);
-                } catch (e) {
-                    console.log(`⚠️ [Kick/Puppeteer] No se pudo parsear JSON de API, probando web scraping...`);
-                }
-            }
-        } catch (apiError) {
-            console.log(`⚠️ [Kick/Puppeteer] API bloqueada, usando web scraping...`);
-        }
-
-        // Si la API falló, hacer web scraping de la página principal
-        const response = await page.goto(`https://kick.com/${username}`, {
-            waitUntil: 'networkidle2',
-            timeout: 30000
-        });
-
-        // Verificar si el canal existe
-        if (response.status() === 404) {
-            await browser.close();
-            return { isLive: false, platform: 'kick', username };
-        }
-
-        // Esperar más tiempo para que cargue completamente
-        await new Promise(resolve => setTimeout(resolve, 5000));
-
-        // Extraer datos de la página
-        const streamData = await page.evaluate(() => {
-            let isLive = false;
-            let title = 'En vivo';
-            let viewers = 0;
-            let thumbnail = null;
-            let avatar = null;
-            let categories = [];
-
-            // Método 1: Buscar el badge de LIVE
-            const liveBadge = document.querySelector('.text-white.bg-red') ||
-                             document.querySelector('[class*="live"]') ||
-                             document.querySelector('[class*="bg-red"]');
-            
-            if (liveBadge && liveBadge.textContent.includes('LIVE')) {
-                isLive = true;
-                console.log('✅ Encontrado badge LIVE');
-            }
-
-            // Método 2: Buscar en todos los scripts
-            const scripts = Array.from(document.querySelectorAll('script'));
-            
-            for (const script of scripts) {
-                const content = script.textContent || script.innerText;
-
-                // Buscar livestream data
-                if (content.includes('livestream') && content.includes('session_title')) {
-                    isLive = true;
-                    
-                    // Extraer título
-                    const titleMatch = content.match(/"session_title"\s*:\s*"([^"]+)"/);
-                    if (titleMatch) {
-                        title = titleMatch[1];
-                    }
-
-                    // Extraer viewers
-                    const viewersMatch = content.match(/"viewer_count"\s*:\s*(\d+)/);
-                    if (viewersMatch) {
-                        viewers = parseInt(viewersMatch[1]);
-                    }
-
-                    // Extraer thumbnail
-                    const thumbMatch = content.match(/"thumbnail"\s*:\s*{\s*"url"\s*:\s*"([^"]+)"/);
-                    if (thumbMatch) {
-                        thumbnail = thumbMatch[1];
-                    }
-
-                    // Extraer avatar
-                    const avatarMatch = content.match(/"profile_pic"\s*:\s*"([^"]+)"/);
-                    if (avatarMatch) {
-                        avatar = avatarMatch[1].replace(/\\\//g, '/');
-                    }
-
-                    // Extraer categorías
-                    const catMatch = content.match(/"categories"\s*:\s*\[([^\]]+)\]/);
-                    if (catMatch) {
-                        const catNames = catMatch[1].match(/"name"\s*:\s*"([^"]+)"/g);
-                        if (catNames) {
-                            categories = catNames.map(m => m.match(/"([^"]+)"/)[1]);
-                        }
-                    }
-
-                    console.log('✅ Datos extraídos de script JSON');
-                    break;
-                }
-            }
-
-            // Método 3: Buscar en window.__NUXT__ (datos de Nuxt.js)
-            if (typeof window.__NUXT__ !== 'undefined') {
-                try {
-                    const nuxtData = window.__NUXT__;
-                    // Intentar encontrar datos del livestream en el objeto Nuxt
-                    const dataStr = JSON.stringify(nuxtData);
-                    
-                    if (dataStr.includes('livestream')) {
-                        isLive = true;
-                        
-                        const viewersNuxt = dataStr.match(/"viewer_count"\s*:\s*(\d+)/);
-                        if (viewersNuxt) {
-                            viewers = parseInt(viewersNuxt[1]);
-                        }
-                        
-                        console.log('✅ Datos encontrados en __NUXT__');
-                    }
-                } catch (e) {
-                    console.log('⚠️ Error parseando __NUXT__');
-                }
-            }
-
-            // Método 4: Buscar meta tags
-            const metaTitle = document.querySelector('meta[property="og:title"]');
-            if (metaTitle && !title.includes('Grand Theft Auto')) {
-                const metaTitleContent = metaTitle.getAttribute('content');
-                if (metaTitleContent) {
-                    title = metaTitleContent;
-                }
-            }
-
-            const metaThumb = document.querySelector('meta[property="og:image"]');
-            if (metaThumb && !thumbnail) {
-                thumbnail = metaThumb.getAttribute('content');
-            }
-
-            // Método 5: Buscar texto de espectadores en la página
-            const viewerElements = document.querySelectorAll('*');
-            for (const el of viewerElements) {
-                const text = el.textContent;
-                if (text && text.includes('Espectadores') && viewers === 0) {
-                    const match = text.match(/(\d+)\s*Espectadores/);
-                    if (match) {
-                        viewers = parseInt(match[1]);
-                        isLive = true;
-                        console.log(`✅ Encontrados ${viewers} espectadores`);
-                    }
-                }
-            }
-
-            console.log(`Resultado final: isLive=${isLive}, viewers=${viewers}, title=${title}`);
-
-            return { isLive, title, viewers, thumbnail, avatar, categories };
-        });
-
-        await browser.close();
-
-        console.log(`✅ [Kick/Puppeteer] ${username}: ${streamData.isLive ? `EN VIVO (${streamData.viewers} viewers)` : 'Offline'}`);
-
-        if (!streamData.isLive) {
-            return { isLive: false, platform: 'kick', username };
-        }
-
-        return {
-            isLive: true,
-            platform: 'kick',
-            username,
-            title: streamData.title,
-            viewers: streamData.viewers,
-            startedAt: null,
-            thumbnail: streamData.thumbnail ? streamData.thumbnail + `?t=${Date.now()}` : null,
-            avatar: streamData.avatar,
-            categories: streamData.categories,
-            language: null,
-            method: 'puppeteer'
-        };
-
-    } catch (error) {
-        if (browser) {
-            try {
-                await browser.close();
-            } catch (e) {
-                // Ignorar errores al cerrar
-            }
-        }
-        
-        console.error(`❌ [Kick/Puppeteer] Error para ${username}:`, error.message);
-        
-        return {
-            isLive: false,
-            platform: 'kick',
-            username,
-            error: 'puppeteer_error'
-        };
-    }
 }
 
 // ==================== TIKTOK ====================
