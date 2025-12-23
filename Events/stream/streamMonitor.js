@@ -231,13 +231,7 @@ async function sendStreamNotification(channel, config, streamer, streamData) {
             embed.addFields({ name: '📂 Categorías', value: streamData.categories.join(', '), inline: true });
         }
 
-        // ===== AVATAR DEL STREAMER (thumbnail pequeño) =====
-        if (streamData.avatar) {
-            embed.setThumbnail(streamData.avatar);
-        } else {
-            embed.setThumbnail(PLATFORM_DEFAULT_AVATARS[streamer.platform]);
-        }
-
+    
         // ===== IMAGEN PRINCIPAL (captura del stream) =====
         if (streamer.platform === 'tiktok') {
             // Para TikTok: usar avatar como imagen principal si no hay thumbnail
@@ -315,13 +309,7 @@ async function updateStreamMessage(channel, config, streamer, streamData) {
         if (streamer.platform === 'kick' && streamData.categories?.length > 0) {
             embed.addFields({ name: '📂 Categorías', value: streamData.categories.join(', '), inline: true });
         }
-
-        // ===== AVATAR DEL STREAMER (thumbnail pequeño) =====
-        if (streamData.avatar) {
-            embed.setThumbnail(streamData.avatar);
-        } else {
-            embed.setThumbnail(PLATFORM_DEFAULT_AVATARS[streamer.platform]);
-        }
+  
 
         // ===== IMAGEN PRINCIPAL (captura del stream) =====
         if (streamer.platform === 'tiktok') {
