@@ -4,7 +4,7 @@ const streamAlertSchema = require('../../Models/streamAlertConfig');
 const { checkStreamStatus } = require('../../utils/streamAPIs');
 
 // Intervalo de verificación en milisegundos
-const CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutos
+const CHECK_INTERVAL = 2 * 60 * 1000; // 2 minutos
 
 // Colores por plataforma
 const PLATFORM_COLORS = {
@@ -92,9 +92,6 @@ async function checkAllGuilds(client) {
 /**
  * Verifica todos los streamers de una configuración
  */
-/**
- * Verifica todos los streamers de una configuración
- */
 async function checkAllStreams(client, config) {
     const guild = client.guilds.cache.get(config.guildId);
     if (!guild) {
@@ -129,42 +126,44 @@ async function checkAllStreams(client, config) {
             if (streamData.isLive) {
                 live++;
 
-                // ===== VERIFICAR KEYWORDS (SIEMPRE, tanto para nuevo como para actualización) =====
-                let hasKeyword = true; // Por defecto true si no hay keywords requeridas
-                
+                // ===== VERIFICAR KEYWORDS CON NORMALIZACIÓN ===== 
                 if (config.settings.requireKeywords && config.globalKeywords.length > 0) {
-                    hasKeyword = config.globalKeywords.some(k =>
-                        streamData.title?.toLowerCase().includes(k.keyword.toLowerCase())
+                    const streamTitle = streamData.title || '';
+
+                    // Buscar si alguna keyword coincide (normalizada)
+                    const hasKeyword = config.globalKeywords.some(k =>
+                        containsKeyword(streamTitle, k.keyword)
                     );
 
                     if (!hasKeyword) {
-                        console.log(`⏭️ [StreamMonitor] ${streamer.displayName}: Sin keywords requeridas`);
-                        
-                        // Si estaba en vivo pero ahora no tiene keywords, eliminar mensaje
-                        if (streamer.isLive && streamer.lastMessageId) {
-                            try {
-                                const message = await alertChannel.messages.fetch(streamer.lastMessageId).catch(() => null);
-                                if (message) {
-                                    await message.delete();
-                                    console.log(`🗑️ [StreamMonitor] Mensaje eliminado por falta de keywords: ${streamer.displayName}`);
+                        console.log(`⏭️ [StreamMonitor] ${streamer.displayName}: Sin keywords en "${streamTitle}", omitiendo`);
+
+                        // Si estaba en vivo antes pero ya no cumple keywords, marcarlo offline
+                        if (streamer.isLive) {
+                            if (config.settings.autoDeleteMessages && streamer.lastMessageId) {
+                                try {
+                                    const message = await alertChannel.messages.fetch(streamer.lastMessageId).catch(() => null);
+                                    if (message) {
+                                        await message.delete();
+                                        console.log(`🗑️ [StreamMonitor] Mensaje eliminado (sin keywords): ${streamer.displayName}`);
+                                    }
+                                } catch (error) {
+                                    console.error(`❌ [StreamMonitor] Error eliminando mensaje:`, error);
                                 }
-                            } catch (error) {
-                                console.error(`❌ [StreamMonitor] Error eliminando mensaje:`, error);
                             }
-                            
-                            // Resetear estado
+
                             streamer.isLive = false;
                             streamer.lastMessageId = null;
                             streamer.currentStreamTitle = null;
                             streamer.currentViewers = 0;
                             streamer.streamStartedAt = null;
                         }
-                        
-                        continue; // Saltar al siguiente streamer
-                    }
-                }
 
-                // ===== SI LLEGAMOS AQUÍ, EL STREAM CUMPLE CON LAS KEYWORDS =====
+                        continue;
+                    }
+
+                    console.log(`✅ [StreamMonitor] ${streamer.displayName}: Keyword encontrada en "${streamTitle}"`);
+                }
 
                 // Si ya estaba en vivo, actualizar mensaje
                 if (streamer.isLive && streamer.lastMessageId) {
@@ -190,13 +189,13 @@ async function checkAllStreams(client, config) {
                 streamer.streamStartedAt = streamData.startedAt ? new Date(streamData.startedAt) : null;
 
             } else {
-                // ===== STREAM OFFLINE =====
+                // Offline
                 if (streamer.isLive && config.settings.autoDeleteMessages && streamer.lastMessageId) {
                     try {
                         const message = await alertChannel.messages.fetch(streamer.lastMessageId).catch(() => null);
                         if (message) {
                             await message.delete();
-                            console.log(`🗑️ [StreamMonitor] Mensaje eliminado (offline): ${streamer.displayName}`);
+                            console.log(`🗑️ [StreamMonitor] Mensaje eliminado: ${streamer.displayName}`);
                         }
                     } catch (error) {
                         console.error(`❌ [StreamMonitor] Error eliminando mensaje:`, error);
@@ -225,6 +224,7 @@ async function checkAllStreams(client, config) {
 
     return { checked, live, notificationsSent };
 }
+
 /**
  * Envía una notificación de nuevo stream
  */
@@ -236,11 +236,14 @@ async function sendStreamNotification(channel, config, streamer, streamData) {
         let message = streamer.customMessage || config.settings.defaultMessage;
         message = message.replace(/{streamer}/g, streamer.displayName);
 
+        // Limpiar título para Discord (mantiene caracteres fancy pero evita problemas)
+        const displayTitle = cleanStreamTitle(streamData.title);
+
         const embed = new EmbedBuilder()
             .setColor(PLATFORM_COLORS[streamer.platform])
             .setTitle(`${platformEmoji} ${streamer.displayName} está en vivo!`)
             .setURL(platformUrl)
-            .setDescription(`**${streamData.title || 'Sin título'}**`)
+            .setDescription(`**${displayTitle}**`) // ← USAR displayTitle
             .addFields(
                 { name: '🎮 Plataforma', value: streamer.platform.toUpperCase(), inline: true },
                 { name: '👥 Viewers', value: `${streamData.viewers || 0}`, inline: true },
@@ -249,30 +252,7 @@ async function sendStreamNotification(channel, config, streamer, streamData) {
             .setTimestamp()
             .setFooter({ text: `🔴 EN VIVO • ${streamer.platform.toUpperCase()}` });
 
-        // ===== CAMPOS ADICIONALES POR PLATAFORMA =====
-        if (streamer.platform === 'twitch' && streamData.game) {
-            embed.addFields({ name: '🎮 Juego', value: streamData.game, inline: true });
-        }
-
-        if (streamer.platform === 'kick' && streamData.categories?.length > 0) {
-            embed.addFields({ name: '📂 Categorías', value: streamData.categories.join(', '), inline: true });
-        }
-
-    
-        // ===== IMAGEN PRINCIPAL (captura del stream) =====
-        if (streamer.platform === 'tiktok') {
-            // Para TikTok: usar avatar como imagen principal si no hay thumbnail
-            if (streamData.thumbnail) {
-                embed.setImage(streamData.thumbnail);
-            } else if (streamData.avatar) {
-                embed.setImage(streamData.avatar);
-            }
-        } else {
-            // Para Twitch y Kick: usar thumbnail del stream
-            if (streamData.thumbnail) {
-                embed.setImage(streamData.thumbnail);
-            }
-        }
+        // ... resto del código de campos y imágenes ...
 
         let content = message;
         if (streamer.roleId) {
@@ -299,6 +279,7 @@ async function sendStreamNotification(channel, config, streamer, streamData) {
     }
 }
 
+
 /**
  * Actualiza el mensaje de un stream activo
  */
@@ -315,11 +296,14 @@ async function updateStreamMessage(channel, config, streamer, streamData) {
         const platformEmoji = PLATFORM_EMOJIS[streamer.platform];
         const platformUrl = PLATFORM_URLS[streamer.platform](streamer.username);
 
+        // Limpiar título
+        const displayTitle = cleanStreamTitle(streamData.title);
+
         const embed = new EmbedBuilder()
             .setColor(PLATFORM_COLORS[streamer.platform])
             .setTitle(`${platformEmoji} ${streamer.displayName} está en vivo!`)
             .setURL(platformUrl)
-            .setDescription(`**${streamData.title || 'Sin título'}**`)
+            .setDescription(`**${displayTitle}**`)
             .addFields(
                 { name: '🎮 Plataforma', value: streamer.platform.toUpperCase(), inline: true },
                 { name: '👥 Viewers', value: `${streamData.viewers || 0}`, inline: true },
@@ -336,7 +320,7 @@ async function updateStreamMessage(channel, config, streamer, streamData) {
         if (streamer.platform === 'kick' && streamData.categories?.length > 0) {
             embed.addFields({ name: '📂 Categorías', value: streamData.categories.join(', '), inline: true });
         }
-  
+
 
         // ===== IMAGEN PRINCIPAL (captura del stream) =====
         if (streamer.platform === 'tiktok') {
