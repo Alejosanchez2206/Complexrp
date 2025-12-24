@@ -92,6 +92,9 @@ async function checkAllGuilds(client) {
 /**
  * Verifica todos los streamers de una configuración
  */
+/**
+ * Verifica todos los streamers de una configuración
+ */
 async function checkAllStreams(client, config) {
     const guild = client.guilds.cache.get(config.guildId);
     if (!guild) {
@@ -126,17 +129,42 @@ async function checkAllStreams(client, config) {
             if (streamData.isLive) {
                 live++;
 
-                // Verificar keywords si es necesario
+                // ===== VERIFICAR KEYWORDS (SIEMPRE, tanto para nuevo como para actualización) =====
+                let hasKeyword = true; // Por defecto true si no hay keywords requeridas
+                
                 if (config.settings.requireKeywords && config.globalKeywords.length > 0) {
-                    const hasKeyword = config.globalKeywords.some(k =>
+                    hasKeyword = config.globalKeywords.some(k =>
                         streamData.title?.toLowerCase().includes(k.keyword.toLowerCase())
                     );
 
                     if (!hasKeyword) {
-                        console.log(`⏭️ [StreamMonitor] ${streamer.displayName}: Sin keywords, omitiendo`);
-                        continue;
+                        console.log(`⏭️ [StreamMonitor] ${streamer.displayName}: Sin keywords requeridas`);
+                        
+                        // Si estaba en vivo pero ahora no tiene keywords, eliminar mensaje
+                        if (streamer.isLive && streamer.lastMessageId) {
+                            try {
+                                const message = await alertChannel.messages.fetch(streamer.lastMessageId).catch(() => null);
+                                if (message) {
+                                    await message.delete();
+                                    console.log(`🗑️ [StreamMonitor] Mensaje eliminado por falta de keywords: ${streamer.displayName}`);
+                                }
+                            } catch (error) {
+                                console.error(`❌ [StreamMonitor] Error eliminando mensaje:`, error);
+                            }
+                            
+                            // Resetear estado
+                            streamer.isLive = false;
+                            streamer.lastMessageId = null;
+                            streamer.currentStreamTitle = null;
+                            streamer.currentViewers = 0;
+                            streamer.streamStartedAt = null;
+                        }
+                        
+                        continue; // Saltar al siguiente streamer
                     }
                 }
+
+                // ===== SI LLEGAMOS AQUÍ, EL STREAM CUMPLE CON LAS KEYWORDS =====
 
                 // Si ya estaba en vivo, actualizar mensaje
                 if (streamer.isLive && streamer.lastMessageId) {
@@ -162,13 +190,13 @@ async function checkAllStreams(client, config) {
                 streamer.streamStartedAt = streamData.startedAt ? new Date(streamData.startedAt) : null;
 
             } else {
-                // Offline
+                // ===== STREAM OFFLINE =====
                 if (streamer.isLive && config.settings.autoDeleteMessages && streamer.lastMessageId) {
                     try {
                         const message = await alertChannel.messages.fetch(streamer.lastMessageId).catch(() => null);
                         if (message) {
                             await message.delete();
-                            console.log(`🗑️ [StreamMonitor] Mensaje eliminado: ${streamer.displayName}`);
+                            console.log(`🗑️ [StreamMonitor] Mensaje eliminado (offline): ${streamer.displayName}`);
                         }
                     } catch (error) {
                         console.error(`❌ [StreamMonitor] Error eliminando mensaje:`, error);
@@ -197,7 +225,6 @@ async function checkAllStreams(client, config) {
 
     return { checked, live, notificationsSent };
 }
-
 /**
  * Envía una notificación de nuevo stream
  */
