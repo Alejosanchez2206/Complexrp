@@ -4,7 +4,7 @@ const streamAlertSchema = require('../../Models/streamAlertConfig');
 const { checkStreamStatus } = require('../../utils/streamAPIs');
 
 // Intervalo de verificación en milisegundos
-const CHECK_INTERVAL = 2 * 60 * 1000; // 2 minutos
+const CHECK_INTERVAL = 10 * 60 * 1000; // 2 minutos
 
 // Colores por plataforma
 const PLATFORM_COLORS = {
