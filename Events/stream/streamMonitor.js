@@ -126,43 +126,16 @@ async function checkAllStreams(client, config) {
             if (streamData.isLive) {
                 live++;
 
-                // ===== VERIFICAR KEYWORDS CON NORMALIZACIÓN ===== 
+                // Verificar keywords si es necesario
                 if (config.settings.requireKeywords && config.globalKeywords.length > 0) {
-                    const streamTitle = streamData.title || '';
-
-                    // Buscar si alguna keyword coincide (normalizada)
                     const hasKeyword = config.globalKeywords.some(k =>
-                        containsKeyword(streamTitle, k.keyword)
+                        streamData.title?.toLowerCase().includes(k.keyword.toLowerCase())
                     );
 
                     if (!hasKeyword) {
-                        console.log(`⏭️ [StreamMonitor] ${streamer.displayName}: Sin keywords en "${streamTitle}", omitiendo`);
-
-                        // Si estaba en vivo antes pero ya no cumple keywords, marcarlo offline
-                        if (streamer.isLive) {
-                            if (config.settings.autoDeleteMessages && streamer.lastMessageId) {
-                                try {
-                                    const message = await alertChannel.messages.fetch(streamer.lastMessageId).catch(() => null);
-                                    if (message) {
-                                        await message.delete();
-                                        console.log(`🗑️ [StreamMonitor] Mensaje eliminado (sin keywords): ${streamer.displayName}`);
-                                    }
-                                } catch (error) {
-                                    console.error(`❌ [StreamMonitor] Error eliminando mensaje:`, error);
-                                }
-                            }
-
-                            streamer.isLive = false;
-                            streamer.lastMessageId = null;
-                            streamer.currentStreamTitle = null;
-                            streamer.currentViewers = 0;
-                            streamer.streamStartedAt = null;
-                        }
-
+                        console.log(`⏭️ [StreamMonitor] ${streamer.displayName}: Sin keywords, omitiendo`);
                         continue;
                     }
-
-                    console.log(`✅ [StreamMonitor] ${streamer.displayName}: Keyword encontrada en "${streamTitle}"`);
                 }
 
                 // Si ya estaba en vivo, actualizar mensaje
@@ -236,14 +209,11 @@ async function sendStreamNotification(channel, config, streamer, streamData) {
         let message = streamer.customMessage || config.settings.defaultMessage;
         message = message.replace(/{streamer}/g, streamer.displayName);
 
-        // Limpiar título para Discord (mantiene caracteres fancy pero evita problemas)
-        const displayTitle = cleanStreamTitle(streamData.title);
-
         const embed = new EmbedBuilder()
             .setColor(PLATFORM_COLORS[streamer.platform])
             .setTitle(`${platformEmoji} ${streamer.displayName} está en vivo!`)
             .setURL(platformUrl)
-            .setDescription(`**${displayTitle}**`) // ← USAR displayTitle
+            .setDescription(`**${streamData.title || 'Sin título'}**`)
             .addFields(
                 { name: '🎮 Plataforma', value: streamer.platform.toUpperCase(), inline: true },
                 { name: '👥 Viewers', value: `${streamData.viewers || 0}`, inline: true },
@@ -252,7 +222,30 @@ async function sendStreamNotification(channel, config, streamer, streamData) {
             .setTimestamp()
             .setFooter({ text: `🔴 EN VIVO • ${streamer.platform.toUpperCase()}` });
 
-        // ... resto del código de campos y imágenes ...
+        // ===== CAMPOS ADICIONALES POR PLATAFORMA =====
+        if (streamer.platform === 'twitch' && streamData.game) {
+            embed.addFields({ name: '🎮 Juego', value: streamData.game, inline: true });
+        }
+
+        if (streamer.platform === 'kick' && streamData.categories?.length > 0) {
+            embed.addFields({ name: '📂 Categorías', value: streamData.categories.join(', '), inline: true });
+        }
+
+    
+        // ===== IMAGEN PRINCIPAL (captura del stream) =====
+        if (streamer.platform === 'tiktok') {
+            // Para TikTok: usar avatar como imagen principal si no hay thumbnail
+            if (streamData.thumbnail) {
+                embed.setImage(streamData.thumbnail);
+            } else if (streamData.avatar) {
+                embed.setImage(streamData.avatar);
+            }
+        } else {
+            // Para Twitch y Kick: usar thumbnail del stream
+            if (streamData.thumbnail) {
+                embed.setImage(streamData.thumbnail);
+            }
+        }
 
         let content = message;
         if (streamer.roleId) {
@@ -279,7 +272,6 @@ async function sendStreamNotification(channel, config, streamer, streamData) {
     }
 }
 
-
 /**
  * Actualiza el mensaje de un stream activo
  */
@@ -296,14 +288,11 @@ async function updateStreamMessage(channel, config, streamer, streamData) {
         const platformEmoji = PLATFORM_EMOJIS[streamer.platform];
         const platformUrl = PLATFORM_URLS[streamer.platform](streamer.username);
 
-        // Limpiar título
-        const displayTitle = cleanStreamTitle(streamData.title);
-
         const embed = new EmbedBuilder()
             .setColor(PLATFORM_COLORS[streamer.platform])
             .setTitle(`${platformEmoji} ${streamer.displayName} está en vivo!`)
             .setURL(platformUrl)
-            .setDescription(`**${displayTitle}**`)
+            .setDescription(`**${streamData.title || 'Sin título'}**`)
             .addFields(
                 { name: '🎮 Plataforma', value: streamer.platform.toUpperCase(), inline: true },
                 { name: '👥 Viewers', value: `${streamData.viewers || 0}`, inline: true },
@@ -320,7 +309,7 @@ async function updateStreamMessage(channel, config, streamer, streamData) {
         if (streamer.platform === 'kick' && streamData.categories?.length > 0) {
             embed.addFields({ name: '📂 Categorías', value: streamData.categories.join(', '), inline: true });
         }
-
+  
 
         // ===== IMAGEN PRINCIPAL (captura del stream) =====
         if (streamer.platform === 'tiktok') {
