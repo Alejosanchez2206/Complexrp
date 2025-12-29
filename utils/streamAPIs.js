@@ -2,11 +2,16 @@
 const axios = require('axios');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 
-
 let twitchAccessToken = null;
 let twitchTokenExpiry = null;
 let kickAccessToken = null;
 let kickTokenExpiry = null;
+
+// Sistema de caché para Kick
+const kickCache = new Map();
+const KICK_CACHE_DURATION = 3 * 60 * 1000; // 3 minutos
+let lastKickRequest = 0;
+const KICK_REQUEST_DELAY = 800; // 800ms entre peticiones
 
 const config = require('../config.json');
 
@@ -122,11 +127,51 @@ async function checkTwitchStream(username) {
     }
 }
 
-// ==================== KICK (API OFICIAL) ====================
+// ==================== KICK (API OFICIAL CON PROTECCIÓN RATE LIMIT) ====================
+
+/**
+ * Espera el tiempo necesario para respetar el rate limit
+ */
+async function waitForKickRateLimit() {
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastKickRequest;
+    
+    if (timeSinceLastRequest < KICK_REQUEST_DELAY) {
+        const waitTime = KICK_REQUEST_DELAY - timeSinceLastRequest;
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    lastKickRequest = Date.now();
+}
+
+/**
+ * Realiza una petición a Kick con reintentos automáticos en caso de rate limit
+ */
+async function makeKickRequestWithRetry(requestFn, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            await waitForKickRateLimit();
+            return await requestFn();
+        } catch (error) {
+            const isRateLimit = error.response?.status === 429;
+            const retryAfter = error.response?.headers['retry-after'];
+            
+            if (isRateLimit && attempt < maxRetries) {
+                const waitTime = retryAfter 
+                    ? parseInt(retryAfter) * 1000 
+                    : Math.pow(2, attempt) * 1000; // Backoff exponencial: 2s, 4s, 8s
+                    
+                console.log(`⏳ [Kick] Rate limit detectado - esperando ${waitTime/1000}s (intento ${attempt}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            } else {
+                throw error;
+            }
+        }
+    }
+}
 
 /**
  * Obtiene un token de acceso de Kick (OAuth 2.1 client_credentials)
- * POST https://id.kick.com/oauth/token?grant_type=client_credentials&client_id=...&client_secret=...
  */
 async function getKickAccessToken() {
     if (kickAccessToken && kickTokenExpiry && Date.now() < kickTokenExpiry) {
@@ -165,24 +210,33 @@ async function getKickAccessToken() {
 }
 
 /**
- * Obtiene info de canal de Kick a partir del slug (username)
- * Intenta múltiples endpoints para mayor compatibilidad
+ * Obtiene info de canal de Kick con caché
  */
 async function getKickChannelInfo(username) {
+    // Verificar caché primero
+    const cacheKey = `channel_${username}`;
+    const cached = kickCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < KICK_CACHE_DURATION) {
+        console.log(`[Kick cache] Usando datos en caché para ${username}`);
+        return cached.data;
+    }
+
     const token = await getKickAccessToken();
 
-    const res = await axios.get('https://api.kick.com/public/v1/channels', {
-        params: { slug: username },
-        headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json'
-        },
-        timeout: 10000
+    const res = await makeKickRequestWithRetry(async () => {
+        return await axios.get('https://api.kick.com/public/v1/channels', {
+            params: { slug: username },
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json'
+            },
+            timeout: 10000
+        });
     });
 
     console.log('[Kick debug] /channels raw response:', res.data);
 
-    // En tu caso la estructura es { data: [ { broadcaster_user_id, slug, ... } ], message: 'OK' }
     const items = res.data.data || res.data.channels || res.data;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -202,18 +256,24 @@ async function getKickChannelInfo(username) {
         `[Kick debug] Canal encontrado: slug=${ch.slug || username}, broadcaster_user_id=${broadcasterUserId}`
     );
 
-    return {
+    const result = {
         broadcasterUserId,
         channelId: ch.id || broadcasterUserId,
         avatar: ch.user?.profile_pic || ch.profile_pic || null,
         slug: ch.slug || username
     };
+
+    // Guardar en caché
+    kickCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now()
+    });
+
+    return result;
 }
 
-
 /**
- * Verifica si un canal de Kick está en vivo usando /public/v1/livestreams
- * GET https://api.kick.com/public/v1/livestreams?broadcaster_user_id=<id>
+ * Verifica si un canal de Kick está en vivo
  */
 async function checkKickStream(username) {
     try {
@@ -221,13 +281,15 @@ async function checkKickStream(username) {
 
         const token = await getKickAccessToken();
 
-        const res = await axios.get('https://api.kick.com/public/v1/livestreams', {
-            params: { broadcaster_user_id: channelInfo.broadcasterUserId },
-            headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: 'application/json'
-            },
-            timeout: 10000
+        const res = await makeKickRequestWithRetry(async () => {
+            return await axios.get('https://api.kick.com/public/v1/livestreams', {
+                params: { broadcaster_user_id: channelInfo.broadcasterUserId },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json'
+                },
+                timeout: 10000
+            });
         });
 
         console.log('[Kick debug] /livestreams raw response:', JSON.stringify(res.data, null, 2));
@@ -282,8 +344,6 @@ async function checkKickStream(username) {
     }
 }
 
-
-
 // ==================== TIKTOK ====================
 
 async function checkTikTokStream(username) {
@@ -328,7 +388,6 @@ async function checkTikTokStream(username) {
             statusCode,
             rawViewers
         });
-
 
         // REGLA 1: Si status NO es 2, está offline
         if (statusCode !== 2) {
@@ -436,7 +495,6 @@ async function checkTikTokStream(username) {
         };
     }
 }
-
 
 module.exports = {
     checkStreamStatus,
