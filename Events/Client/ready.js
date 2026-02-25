@@ -21,6 +21,6 @@ module.exports = {
         });
 
         console.log(`Logged in as ${client.user.tag}`);
-        initializeStreamMonitor(client);
+       /*  initializeStreamMonitor(client); */
     }
 }

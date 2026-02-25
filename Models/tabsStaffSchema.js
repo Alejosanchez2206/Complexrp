@@ -4,7 +4,8 @@ const tabsStaffSchema = new Schema({
     guildId : String,
     roleId : String,
     tabStaff : String, 
-    mentions : Boolean
+    mentions : Boolean,
+    orden : Number
 }, {
     versionKey: false
 })
