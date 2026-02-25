@@ -39,16 +39,37 @@ const PERMISSION_FLAGS = {
 };
 
 /**
- * Formatea el nombre del canal
+ * Formatea el nombre del canal evitando duplicados por {number}
  */
-function formatChannelName(template, member) {
-    return template
+function formatChannelName(template, member, generatorId = null) {
+    const baseName = template
         .replace(/{user}/g, member.user.username)
         .replace(/{displayName}/g, member.displayName)
         .replace(/{tag}/g, member.user.tag)
         .replace(/{nickname}/g, member.nickname || member.displayName)
-        .replace(/{id}/g, member.id)
-        .replace(/{number}/g, activeTemporaryChannels.size + 1);
+        .replace(/{id}/g, member.id);
+
+    // Si no usa {number}, retornar directo
+    if (!template.includes('{number}')) return baseName;
+
+    // Obtener nombres activos del mismo generador
+    const activeNames = new Set(
+        [...activeTemporaryChannels.values()]
+            .filter(ch => !generatorId || ch.generatorId === generatorId)
+            .map(ch => ch.channelName)
+            .filter(Boolean)
+    );
+
+    // Buscar el primer número libre
+    let number = 1;
+    let finalName;
+
+    do {
+        finalName = baseName.replace(/{number}/g, number);
+        number++;
+    } while (activeNames.has(finalName));
+
+    return finalName;
 }
 
 /**
@@ -128,14 +149,14 @@ function buildPermissionOverwrites(guild, member, config) {
         // Convertir los permisos de string a flags
         const allowFlags = roleConfig.permisos
             .map(perm => PermissionFlagsBits[perm])
-            .filter(flag => flag !== undefined); // Filtrar permisos inválidos
+            .filter(flag => flag !== undefined);
 
         // Solo agregar si hay permisos válidos
         if (allowFlags.length > 0) {
             overwrites.push({
                 id: roleConfig.roleId,
                 allow: allowFlags,
-                deny: [] // No denegamos nada explícitamente
+                deny: []
             });
         }
     }
@@ -228,7 +249,13 @@ async function handleUserJoin(voiceState, client) {
     // Crear canal temporal
     try {
         const { settings } = generatorConfig;
-        const channelName = formatChannelName(settings.defaultName, member);
+
+        // Generar nombre con número único por generador
+        const channelName = formatChannelName(
+            settings.defaultName,
+            member,
+            generatorConfig.generatorChannelId
+        );
 
         // Construir permisos
         const permissionOverwrites = buildPermissionOverwrites(guild, member, generatorConfig);
@@ -254,13 +281,14 @@ async function handleUserJoin(voiceState, client) {
         // Mover al usuario
         await member.voice.setChannel(tempChannel, 'Movido a su canal temporal');
 
-        // Registrar el canal
+        // Registrar el canal incluyendo channelName para tracking de números
         activeTemporaryChannels.set(tempChannel.id, {
             ownerId: member.id,
             guildId: guild.id,
             createdAt: Date.now(),
             generatorId: generatorConfig.generatorChannelId,
-            categoryId: generatorConfig.categoryId
+            categoryId: generatorConfig.categoryId,
+            channelName: tempChannel.name  // 👈 Guardado para evitar duplicados
         });
 
         console.log(`🎤 [TempVoice] ${member.user.tag} creó "${channelName}"`);
@@ -331,8 +359,15 @@ async function handleUserLeave(voiceState, client) {
                 });
 
                 if (config) {
-                    const newName = formatChannelName(config.settings.defaultName, newOwner);
+                    const newName = formatChannelName(
+                        config.settings.defaultName,
+                        newOwner,
+                        tempChannelData.generatorId
+                    );
                     await existingChannel.setName(newName, 'Transferencia de propiedad');
+
+                    // Actualizar el nombre en el Map
+                    tempChannelData.channelName = newName;
                 }
 
                 console.log(`🔄 [TempVoice] Propiedad transferida a ${newOwner.user.tag}`);
