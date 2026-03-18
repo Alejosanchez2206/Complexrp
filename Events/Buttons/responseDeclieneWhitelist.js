@@ -1,96 +1,91 @@
 const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
 const whitelistSchema = require('../../Models/whitelistSystemSchema');
 const permisosSchema = require('../../Models/addPermisos');
+const validarPermiso = require('../../utils/ValidarPermisos');
 
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
         try {
             if (!interaction.isButton()) return;
-            
+
             if (interaction.customId === 'WhitelistSystemDeclineButton') {
-                
+
                 await interaction.deferUpdate();
 
-                const rolesUser = interaction.member.roles.cache.map(role => role.id).join(',');
-                const rolesArray = rolesUser.split(',');
-                const validarRol = await permisosSchema.find({ 
-                    permiso: 'revisar-whitelist', 
-                    guild: interaction.guild.id, 
-                    rol: { $in: rolesArray } 
-                });
+                const tienePermiso = await validarPermiso(interaction, 'revisar-whitelist');
 
-                if (validarRol.length === 0) {
-                    return interaction.followUp({ 
-                        content: 'No tienes permisos para responder whitelist, si crees que es un error contacta con los Supervisores', 
-                        ephemeral: true 
+                if (!tienePermiso) {
+                    return interaction.reply({
+                        content: '❌ No tienes permisos para cerrar soportes\n> Necesitas el permiso: `revisar-whitelist`',
+                        ephemeral: true
                     });
                 }
 
-               
+
                 if (!interaction.message.embeds || interaction.message.embeds.length === 0) {
-                    return interaction.followUp({ 
-                        content: 'No se pudo obtener la información del embed.', 
-                        ephemeral: true 
+                    return interaction.followUp({
+                        content: 'No se pudo obtener la información del embed.',
+                        ephemeral: true
                     });
                 }
 
                 const embed = interaction.message.embeds[0];
-                
-                
+
+
                 if (!embed.footer || !embed.footer.text) {
-                    return interaction.followUp({ 
-                        content: 'No se pudo obtener el ID del usuario desde el footer.', 
-                        ephemeral: true 
+                    return interaction.followUp({
+                        content: 'No se pudo obtener el ID del usuario desde el footer.',
+                        ephemeral: true
                     });
                 }
 
                 const footer = embed.footer.text;
                 const idMatch = footer.match(/\d+/);
-                
+
                 if (!idMatch) {
-                    return interaction.followUp({ 
-                        content: 'No se pudo extraer el ID del usuario desde el footer.', 
-                        ephemeral: true 
+                    return interaction.followUp({
+                        content: 'No se pudo extraer el ID del usuario desde el footer.',
+                        ephemeral: true
                     });
                 }
 
                 const id = idMatch[0];
 
-                
+
                 let dataUser;
                 try {
                     dataUser = await interaction.guild.members.fetch(id);
                 } catch (error) {
                     console.log('Error al obtener el usuario:', error);
-                    return interaction.followUp({ 
-                        content: 'El usuario no se encuentra en el servidor o ha abandonado.', 
-                        ephemeral: true 
+                    return interaction.followUp({
+                        content: 'El usuario no se encuentra en el servidor o ha abandonado.',
+                        ephemeral: true
                     });
                 }
 
                 if (!dataUser || !dataUser.user) {
-                    return interaction.followUp({ 
-                        content: 'No se pudo obtener la información del usuario.', 
-                        ephemeral: true 
+                    return interaction.followUp({
+                        content: 'No se pudo obtener la información del usuario.',
+                        ephemeral: true
                     });
                 }
 
-               
+
                 const whitelist = await whitelistSchema.findOne({ guildId: interaction.guild.id });
                 if (!whitelist) {
-                    return interaction.followUp({ 
-                        content: 'No se ha configurado un sistema de whitelist.', 
-                        ephemeral: true 
+                    return interaction.followUp({
+                        content: 'No se ha configurado un sistema de whitelist.',
+                        ephemeral: true
                     });
                 }
 
-               
+
                 const channel = interaction.guild.channels.cache.get(whitelist.channelResult);
                 if (!channel) {
-                    return interaction.followUp({ 
-                        content: 'Error: No se encontró el canal de resultados configurado.', 
-                        ephemeral: true 
+                    return interaction.followUp({
+                        content: 'Error: No se encontró el canal de resultados configurado.',
+                        ephemeral: true
                     });
                 }
 
@@ -98,45 +93,45 @@ module.exports = {
                     const updatedEmbed = EmbedBuilder.from(embed)
                         .setTitle('Whitelist Rechazada')
                         .setColor('#FF0000')
-                        .setFooter({ 
-                            text: 'Rechazada por: ' + interaction.user.username, 
-                            iconURL: interaction.user.displayAvatarURL() 
+                        .setFooter({
+                            text: 'Rechazada por: ' + interaction.user.username,
+                            iconURL: interaction.user.displayAvatarURL()
                         })
-                        .setTimestamp(); 
+                        .setTimestamp();
 
-                   
-                    await interaction.message.edit({ 
-                        embeds: [updatedEmbed], 
-                        components: [] 
-                    });                  
 
-                  
-                    await channel.send({ 
+                    await interaction.message.edit({
+                        embeds: [updatedEmbed],
+                        components: []
+                    });
+
+
+                    await channel.send({
                         content: `Lo sentimos <@${id}>, tu solicitud de whitelist ha sido rechazada.`,
-                        embeds: [] 
+                        embeds: []
                     });
 
                 } catch (actionError) {
                     console.log('Error en las acciones de rechazo:', actionError);
-                    return interaction.followUp({ 
-                        content: 'Error al procesar el rechazo de whitelist.', 
-                        ephemeral: true 
+                    return interaction.followUp({
+                        content: 'Error al procesar el rechazo de whitelist.',
+                        ephemeral: true
                     });
                 }
             }
         } catch (err) {
             console.log('Error general en whitelist decline:', err);
-            
+
             try {
                 if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ 
-                        content: 'Ocurrió un error inesperado. Por favor, contacta con un administrador.', 
-                        ephemeral: true 
+                    await interaction.reply({
+                        content: 'Ocurrió un error inesperado. Por favor, contacta con un administrador.',
+                        ephemeral: true
                     });
                 } else if (interaction.deferred) {
-                    await interaction.followUp({ 
-                        content: 'Ocurrió un error inesperado. Por favor, contacta con un administrador.', 
-                        ephemeral: true 
+                    await interaction.followUp({
+                        content: 'Ocurrió un error inesperado. Por favor, contacta con un administrador.',
+                        ephemeral: true
                     });
                 }
             } catch (responseError) {

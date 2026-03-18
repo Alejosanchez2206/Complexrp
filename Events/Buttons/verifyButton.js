@@ -77,8 +77,8 @@ module.exports = {
                 // Texto: Origen y destino
                 ctx.font = '20px Arial';
                 ctx.fillStyle = '#000';
-                ctx.fillText('ORIGEN: DESCONOCIDO', 30, 220);
-                ctx.fillText('DESTINO: COMPLEX COMMUNITY', 30, 260);
+                ctx.fillText('ORIGEN: Los Santos', 30, 220);
+                ctx.fillText('DESTINO: United States Armed Forces', 30, 260);
 
                 // Texto: Llegada
                 const date = new Date();
@@ -90,13 +90,13 @@ module.exports = {
                 // Texto: Footer
                 ctx.font = '15px Arial';
                 ctx.fillStyle = '#000';
-                ctx.fillText('COMPLEX COMMUNITY', 30, 380);
-                ctx.fillText('GTAV', 350, 380);
-                ctx.fillText('WHITELIST APROBADA', 500, 380);
+                ctx.fillText('ARMY USAF', 30, 380);
+                ctx.fillText('DIVISION DE RECLUTAMIENTO', 350, 380);
+                ctx.fillText('RECLUTADO', 500, 380);
 
                 const attachment = new AttachmentBuilder(canvas.toBuffer('image/png'), { name: 'tarjeta.png' });
                 const channel = interaction.guild.channels.cache.get(data.channelResult);
-                await channel.send({ content: `<@${interaction.user.id}> Bienvenido a ${interaction.guild.name}, te esperamos el día de nuestra apertura`, files: [attachment] });
+                await channel.send({ content: `<@${interaction.user.id}> Bienvenido a ${interaction.guild.name}, te esperamos en nuestra base militar`, files: [attachment] });
                 await interaction.followUp({ content: '✅ Verificación exitosa.', ephemeral: true });
             }
         } catch (error) {
