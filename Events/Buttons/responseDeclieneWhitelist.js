@@ -107,7 +107,7 @@ module.exports = {
 
 
                     await channel.send({
-                        content: `Lo sentimos <@${id}>, tu solicitud de whitelist ha sido rechazada.`,
+                        content: `Lo sentimos <@${id}>, tu solicitud de Postulación ha sido rechazada.`,
                         embeds: []
                     });
 

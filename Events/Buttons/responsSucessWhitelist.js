@@ -112,91 +112,8 @@ module.exports = {
                         content: 'Error: No se encontró el archivo de imagen de fondo.',
                         ephemeral: true
                     });
-                }
-
-                // Crear el canvas con manejo de errores
-                let canvas, ctx, attachment;
-                try {
-                    // Configuración del lienzo
-                    canvas = createCanvas(800, 400);
-                    ctx = canvas.getContext('2d');
-
-                    // Imagen de fondo
-                    const background = await loadImage(imagePath);
-                    ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
-
-
-                    // Texto: Identificación 
-                    ctx.font = 'bold 40px Arial';
-                    ctx.fillStyle = '#000';
-                    ctx.fillText('IDENTIFICACIÓN', 30, 80);
-
-                    // Texto: Jugador
-                    ctx.font = '28px Arial';
-                    ctx.fillStyle = '#000';
-                    ctx.fillText('JUGADOR:', 20, 130);
-
-                    // Texto: Nombre
-                    ctx.font = 'bold 28px Arial';
-                    ctx.fillStyle = '#000';
-                    ctx.fillText(username.toUpperCase(), 170, 130);
-
-                    // Texto: Código
-                    ctx.font = 'bold 25px Arial';
-                    ctx.fillStyle = '#000';
-                    ctx.fillText(consecutivoNumberActual, 90, 160);
-
-                    // Texto: Origen y destino
-                    ctx.font = '20px Arial';
-                    ctx.fillStyle = '#000';
-                    ctx.fillText('ORIGEN: Los Santos', 30, 220);
-                    ctx.fillText('DESTINO: United States Armed Forces', 30, 260);
-
-                    // Texto: Llegada
-                    const date = new Date();
-                    ctx.fillText(`LLEGADA: ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`, 30, 300);
-
-
-                    // Cargar imagen de perfil con manejo de errores
-                    try {
-                        const profileImage = await loadImage(avatar);
-
-                        // Hacer la imagen circular (opcional)
-                        ctx.save();
-                        ctx.beginPath();
-                        ctx.arc(625, 175, 125, 0, Math.PI * 2, true);
-                        ctx.closePath();
-                        ctx.clip();
-                        ctx.drawImage(profileImage, 500, 50, 250, 250);
-                        ctx.restore();
-                    } catch (avatarError) {
-                        console.log('Error al cargar avatar:', avatarError);
-                        // Crear un placeholder si no se puede cargar el avatar
-                        ctx.fillStyle = '#cccccc';
-                        ctx.fillRect(500, 50, 250, 250);
-                        ctx.fillStyle = '#000';
-                        ctx.font = '20px Arial';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('Sin Avatar', 625, 175);
-                        ctx.textAlign = 'left';
-                    }
-
-                    ctx.font = '15px Arial';
-                    ctx.fillStyle = '#000';
-                    ctx.fillText('USAF', 30, 380);
-                    ctx.fillText('DIVISIÓN DE RECLUTAMIENTO', 350, 380);
-                    ctx.fillText('RECLUTADO', 500, 380);
-
-                    attachment = new AttachmentBuilder(canvas.toBuffer('image/png'), { name: 'tarjeta.png' });
-
-                } catch (canvasError) {
-                    console.log('Error al crear el canvas:', canvasError);
-                    return interaction.followUp({
-                        content: 'Error al generar la tarjeta de identificación.',
-                        ephemeral: true
-                    });
-                }
-
+                }            
+              
                 // Verificar que los elementos necesarios existen antes de continuar
                 const role = interaction.guild.roles.cache.get(whitelist.roleId);
                 if (!role) {
@@ -244,7 +161,6 @@ module.exports = {
                     // Enviar mensaje de confirmación con la tarjeta
                     await channel.send({
                         content: `<@${id}> ¡Bienvenido a ${interaction.guild.name}, Postulación aprobada!`,
-                        files: [attachment]
                     });
 
                     // Enviar mensaje privado al usuario
