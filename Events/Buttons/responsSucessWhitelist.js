@@ -125,31 +125,37 @@ module.exports = {
                     const background = await loadImage(imagePath);
                     ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-                    // Texto en el lienzo con mejores validaciones
+
+                    // Texto: Identificación 
                     ctx.font = 'bold 40px Arial';
                     ctx.fillStyle = '#000';
-                    ctx.textAlign = 'left';
                     ctx.fillText('IDENTIFICACIÓN', 30, 80);
 
+                    // Texto: Jugador
                     ctx.font = '28px Arial';
                     ctx.fillStyle = '#000';
                     ctx.fillText('JUGADOR:', 20, 130);
 
-                    // Truncar username si es muy largo
-                    const displayUsername = username.length > 15 ?
-                        username.substring(0, 15) + '...' : username;
-                    ctx.fillText(displayUsername.toUpperCase(), 170, 130);
+                    // Texto: Nombre
+                    ctx.font = 'bold 28px Arial';
+                    ctx.fillStyle = '#000';
+                    ctx.fillText(username.toUpperCase(), 170, 130);
 
+                    // Texto: Código
                     ctx.font = 'bold 25px Arial';
-                    ctx.fillText(`#${numberConsecutivo}`, 90, 160);
+                    ctx.fillStyle = '#000';
+                    ctx.fillText(consecutivoNumberActual, 90, 160);
 
+                    // Texto: Origen y destino
                     ctx.font = '20px Arial';
-                    ctx.fillText('ORIGEN: DESCONOCIDO', 30, 220);
-                    ctx.fillText('DESTINO: COMPLEX COMMUNITY', 30, 260);
+                    ctx.fillStyle = '#000';
+                    ctx.fillText('ORIGEN: Los Santos', 30, 220);
+                    ctx.fillText('DESTINO: United States Armed Forces', 30, 260);
 
+                    // Texto: Llegada
                     const date = new Date();
-                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
-                    ctx.fillText(`LLEGADA: ${formattedDate}`, 30, 300);
+                    ctx.fillText(`LLEGADA: ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`, 30, 300);
+
 
                     // Cargar imagen de perfil con manejo de errores
                     try {
@@ -177,9 +183,9 @@ module.exports = {
 
                     ctx.font = '15px Arial';
                     ctx.fillStyle = '#000';
-                    ctx.fillText('COMPLEX COMMUNITY', 30, 380);
-                    ctx.fillText('GTAV', 350, 380);
-                    ctx.fillText('WHITELIST APROBADA', 500, 380);
+                    ctx.fillText('USAF', 30, 380);
+                    ctx.fillText('DIVISIÓN DE RECLUTAMIENTO', 350, 380);
+                    ctx.fillText('RECLUTADO', 500, 380);
 
                     attachment = new AttachmentBuilder(canvas.toBuffer('image/png'), { name: 'tarjeta.png' });
 
@@ -219,7 +225,7 @@ module.exports = {
                 try {
                     // Crear un nuevo embed basado en el original y cambiar el color
                     const updatedEmbed = EmbedBuilder.from(embed)
-                        .setTitle('Whitelist Aprobada , Consecutivo #' + numberConsecutivo)
+                        .setTitle('Postulación Aprobada , Consecutivo #' + numberConsecutivo)
                         .setColor('#00FF00')
                         .setFooter({
                             text: 'Aprobado por: ' + interaction.user.username,
@@ -237,20 +243,20 @@ module.exports = {
 
                     // Enviar mensaje de confirmación con la tarjeta
                     await channel.send({
-                        content: `<@${id}> ¡Bienvenido a ${interaction.guild.name}, whitelist aprobada!`,
+                        content: `<@${id}> ¡Bienvenido a ${interaction.guild.name}, Postulación aprobada!`,
                         files: [attachment]
                     });
 
                     // Enviar mensaje privado al usuario
                     await interaction.followUp({
-                        content: `✅ Whitelist aprobada para ${dataUser.user.tag}.`,
+                        content: `✅ Postulación aprobada para ${dataUser.user.tag}.`,
                         ephemeral: true
                     });
 
                 } catch (finalError) {
                     console.log('Error en las acciones finales:', finalError);
                     return interaction.followUp({
-                        content: 'Error al completar la aprobación de whitelist.',
+                        content: 'Error al completar la aprobación de postulación.',
                         ephemeral: true
                     });
                 }

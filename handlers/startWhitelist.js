@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const questionsSchema = require('../Models/questions');
 const whitelistSchema = require('../Models/whitelistSystemSchema');
 const userBlacklist = require('../Models/blackUser');
@@ -29,20 +29,11 @@ module.exports = async (interaction) => {
 
     const guildId = interaction.guild.id;
     const [textQuestions, selectQuestions] = await Promise.all([
-        questionsSchema.aggregate([{ $match: { guildId, type: 'text' } }, { $sample: { size: 7 } }]),
-        questionsSchema.aggregate([{ $match: { guildId, type: 'select' } }, { $sample: { size: 3 } }])
+        questionsSchema.aggregate([{ $match: { guildId, type: 'text' } }, { $sample: { size: 5 } }]),
+        questionsSchema.aggregate([{ $match: { guildId, type: 'select' } }, { $sample: { size: 5 } }])
     ]);
 
-    const personalQuestions = [
-        { question: '¿Qué edad tienes (OOC)?', type: 'text' },
-        { question: '¿Por qué quieres ser parte de la comunidad? ¿Qué servidores has visitado?', type: 'text' },
-        {
-            question: 'Escribe la historia de tu personaje:\nNombre:\nDescripción física y de personalidad:\nHistoria:\n(Si superas los 900 caracteres, puedes subir un enlace de Google Docs).',
-            type: 'text'
-        }
-    ];
-
-    const questions = [...textQuestions, ...selectQuestions, ...personalQuestions];
+    const questions = [...textQuestions, ...selectQuestions];
 
     if (questions.length === 0) {
         return interaction.reply({ content: '❌ No hay preguntas disponibles.', ephemeral: true });
