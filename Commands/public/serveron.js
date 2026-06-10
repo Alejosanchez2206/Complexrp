@@ -41,13 +41,12 @@ module.exports = {
                 .setColor('#00FF00') // Color verde para indicar que el servidor está activo
                 .setDescription(
                     mensajeText.SERVERON
-                )
-                .setImage("https://i.imgur.com/f0AoPUW.gif") // URL de la imagen grande
+                )             
                 .setFooter({ text: mensajeText.FOOTER });
 
 
             // Define el canal al que se enviará el mensaje (reemplaza 'id' por el ID del canal correcto)
-            const otroCanal = await interaction.client.channels.fetch('1162895856614264963');
+            const otroCanal = await interaction.client.channels.fetch('1491619796578734190');
 
             if (otroCanal) {
                 // Elimina el mensaje anterior (si existe)
@@ -60,7 +59,7 @@ module.exports = {
                 await otroCanal.send({ content: '@everyone', embeds: [embed] });
 
                 // Cambia el nombre del canal (reemplaza 'nuevo-nombre-del-canal' por el nombre que desees)
-                await otroCanal.setName('💚〡ᴄᴏᴍᴘʟᴇx ꜱᴛᴀᴛᴜꜱ');
+                await otroCanal.setName('💚〡ꜱᴛᴀᴛᴜꜱ');
 
 
             } else {

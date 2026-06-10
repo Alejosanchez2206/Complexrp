@@ -55,7 +55,7 @@ module.exports = {
                 .setColor(validarStrike.length > 0 ? '#FFA500' : '#00FF00') // Naranja si hay strikes, verde si no
                 .setTimestamp()
                 .setFooter({
-                    text: 'Complex Community • Sistema de Moderación',
+                    text: 'Brutal Arena • Sistema de Moderación',
                     iconURL: interaction.guild.iconURL({ dynamic: true }) || undefined
                 });
 

@@ -90,7 +90,7 @@ module.exports = {
                 )
                 .setTimestamp()
                 .setFooter({
-                    text: 'Complex Community • Sistema de Moderación',
+                    text: 'Brutal Arena • Sistema de Moderación',
                     iconURL: interaction.guild.iconURL({ dynamic: true }) || undefined
                 });
 

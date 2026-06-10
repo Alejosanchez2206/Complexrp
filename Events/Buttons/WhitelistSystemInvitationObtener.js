@@ -52,7 +52,7 @@ module.exports = {
                     .setTitle('🎟️ Invitación generada')
                     .setDescription(`Tu código de invitación es:\n\n\`\`\`${idGenerado}\`\`\`\n\nPuedes compartir este código con tus invitados.`)
                     .setColor('#00FF00')
-                    .setFooter({ text: 'Complex Community', iconURL: interaction.guild.iconURL() })
+                    .setFooter({ text: 'Brutal Arena', iconURL: interaction.guild.iconURL() })
                     .setTimestamp();
                 await interaction.reply({ embeds: [embed], ephemeral: true });
 

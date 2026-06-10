@@ -41,12 +41,11 @@ module.exports = {
                 .setDescription(
                     mensajeText.SERVEROFFLINE
                 )
-                .setImage("https://i.imgur.com/nTPhQ2v.gif") // URL de la imagen grande
                 .setFooter({ text: mensajeText.FOOTER });
 
 
             // Define el canal al que se enviará el mensaje (reemplaza 'id' por el ID del canal correcto)
-            const otroCanal = await interaction.client.channels.fetch('1162895856614264963');
+            const otroCanal = await interaction.client.channels.fetch('1491619796578734190');
 
             if (otroCanal) {
                 // Elimina el mensaje anterior (si existe)

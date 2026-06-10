@@ -88,7 +88,7 @@ module.exports = {
             .setDescription(message)
             .setColor(color)
             .setImage(image)
-            .setFooter({ text: 'Complex community', iconURL: client.user.displayAvatarURL() });
+            .setFooter({ text: 'Brutal Arena', iconURL: client.user.displayAvatarURL() });
 
         const systemMessage = await interaction.reply({
             content: 'Sistema de invitaciones activado',
